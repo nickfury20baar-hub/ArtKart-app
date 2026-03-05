@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ArtKart — Liked Items</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+  <!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-WM217K82H4"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-WM217K82H4');
+</script>
+
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; font-family:'Poppins',sans-serif; }
+    body { background:#f5f6fa; min-height:100vh; color:#222; padding-bottom:90px; }
+
+    header {
+      background:#ffffff; padding:14px 16px; display:flex; align-items:center; gap:12px;
+      box-shadow:0 2px 10px rgba(0,0,0,0.06); position:sticky; top:0; z-index:100;
+    }
+    .logo { width:38px; height:38px; border-radius:10px; background:linear-gradient(135deg,#6c63ff,#9f9cff); }
+    header h1 { font-size:21px; font-weight:600; color:#2d2d2d; flex:1; }
+
+    .container { padding:16px; }
+
+    .section-title { font-size:18px; font-weight:600; margin:20px 0 16px; color:#333; }
+
+    .items-grid {
+      display:grid; grid-template-columns:repeat(auto-fill, minmax(160px, 1fr)); gap:14px;
+    }
+
+    .art-card {
+      background:#fff; border-radius:14px; overflow:hidden;
+      box-shadow:0 4px 16px rgba(0,0,0,0.08); transition:transform 0.18s ease;
+      text-decoration:none; color:inherit; display:block;
+    }
+    .art-card:hover { transform:translateY(-4px); }
+
+    .art-img { width:100%; aspect-ratio:1/1.1; object-fit:cover; background:#e8e8e8; }
+
+    .art-info { padding:12px; }
+    .art-title { font-size:14px; font-weight:500; margin-bottom:4px; line-height:1.3; }
+    .art-artist { font-size:12px; color:#777; margin-bottom:6px; }
+
+    .card-meta {
+      display:flex; justify-content:space-between; align-items:center; font-size:13px;
+    }
+    .price-tag {
+      background:#f0f1ff; color:#6c63ff; padding:4px 10px; border-radius:10px;
+      font-weight:500; font-size:12px;
+    }
+    .like-btn {
+      background:none; border:none; color:#ff4757; font-size:24px; cursor:pointer;
+      padding:4px; transition:transform 0.2s;
+    }
+    .like-btn .material-symbols-outlined { font-variation-settings:'FILL' 1; }
+    .like-btn:active { transform:scale(1.3); }
+
+    .loading, .empty-state { text-align:center; padding:80px 24px; color:#777; }
+    .empty-icon { font-size:64px; color:#d0d0d0; margin-bottom:16px; }
+
+    .bottom-nav {
+      position:fixed; bottom:0; left:0; width:100%; height:68px; background:#fff;
+      display:flex; justify-content:space-around; align-items:center;
+      box-shadow:0 -3px 12px rgba(0,0,0,0.09); z-index:100;
+    }
+    .nav-item { flex:1; text-align:center; font-size:11px; color:#666; cursor:pointer; }
+    .nav-item.active { color:#6c63ff; font-weight:600; }
+    .nav-item .material-symbols-outlined { font-size:26px; margin-bottom:4px; display:block; }
+    .nav-item.active .material-symbols-outlined { color:#6c63ff; }
+  </style>
+</head>
+<body>
+
+  <header>
+    
+    <button class="back-btn" onclick="history.back()">
+      <span class="material-symbols-outlined">arrow_back</span>
+    </button>
+    <h1>ArtKart</h1>
+  </header>
+
+  <div class="container">
+    <h3 class="section-title">Liked Items</h3>
+
+    <div class="loading" id="loading">Loading your liked artworks...</div>
+
+    <div class="items-grid" id="itemsGrid" style="display:none;"></div>
+
+    <div class="empty-state" id="emptyState" style="display:none;">
+      <span class="material-symbols-outlined empty-icon">favorite</span>
+      <h3>No liked items yet</h3>
+      <p>When you like an artwork, it will appear here.</p>
+    </div>
+  </div>
+
+  <nav class="bottom-nav">
+    <div class="nav-item" data-page="home">
+      <span class="material-symbols-outlined">home</span> Home
+    </div>
+    <div class="nav-item" data-page="explore">
+      <span class="material-symbols-outlined">explore</span> Explore
+    </div>
+    <div class="nav-item active" data-page="profile">
+      <span class="material-symbols-outlined">person</span> Profile
+    </div>
+  </nav>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+<script>
+  // 🔹 Firebase Config
+  const firebaseConfig = {
+    apiKey: "AIzaSyCZ-QeZrs6qJlDk4ZMs9LP2iQ4wjJ2vcF8",
+    authDomain: "artkart-69692.firebaseapp.com",
+    projectId: "artkart-69692",
+    storageBucket: "artkart-69692.appspot.com",
+    messagingSenderId: "1067935304156",
+    appId: "1:1067935304156:web:d8c50769ecb9797f8d6719"
+  };
+
+  // 🔹 Initialize Firebase
+  if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+  }
+
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+
+  // 🔹 DOM Elements
+  const grid = document.getElementById("itemsGrid");
+  const loading = document.getElementById("loading");
+  const empty = document.getElementById("emptyState");
+
+  // 🔹 Auth Listener
+  auth.onAuthStateChanged(async (user) => {
+    if (!user) {
+      location.href = "login.html";
+      return;
+    }
+
+    try {
+      const likesSnap = await db
+        .collection("likes")
+        .where("userId", "==", user.uid)
+        .orderBy("likedAt", "desc")
+        .get();
+
+      loading.style.display = "none";
+
+      if (likesSnap.empty) {
+        empty.style.display = "block";
+        return;
+      }
+
+      grid.style.display = "grid";
+      grid.innerHTML = "";
+
+      for (const likeDoc of likesSnap.docs) {
+        const { artId } = likeDoc.data();
+
+        const artDoc = await db.collection("arts").doc(artId).get();
+        if (!artDoc.exists) continue;
+
+        const art = artDoc.data();
+
+        const card = document.createElement("a");
+        card.className = "art-card";
+        card.href = `artwork.html?id=${artId}`;
+
+        card.innerHTML = `
+          <img class="art-img" src="${art.imageUrl}" alt="${art.title}">
+          <div class="art-info">
+            <div class="art-title">${art.title}</div>
+            <div class="art-artist">by ${art.artistName}</div>
+            <div class="card-meta">
+              <span class="price-tag">₹${art.price}</span>
+              <button class="like-btn" disabled>
+                <span class="material-symbols-outlined"
+                  style="font-variation-settings:'FILL' 1;">
+                  favorite
+                </span>
+              </button>
+            </div>
+          </div>
+        `;
+
+        grid.appendChild(card);
+      }
+
+    } catch (error) {
+      console.error("Failed to load liked items:", error);
+      loading.style.display = "none";
+      empty.style.display = "block";
+    }
+  });
+</script>
+</body>
+</html>

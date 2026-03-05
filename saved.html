@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ArtKart — Saved Items</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+  <!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-WM217K82H4"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-WM217K82H4');
+</script>
+
+  <style>
+    /* ────────────────────────────────────────────────
+       Same CSS as liked.html — copy-pasted for consistency
+    ──────────────────────────────────────────────── */
+    * { margin:0; padding:0; box-sizing:border-box; font-family:'Poppins',sans-serif; }
+    body { background:#f5f6fa; min-height:100vh; color:#222; padding-bottom:90px; }
+
+    #pullIndicator {
+      position: fixed; top: -60px; left:0; right:0; height:60px;
+      display:flex; align-items:center; justify-content:center;
+      background:#6c63ff; color:white; font-weight:500;
+      transition:top 0.3s ease; z-index:200;
+    }
+    #pullIndicator.active { top:0; }
+
+    header {
+      background:#fff; padding:12px 16px; display:flex; align-items:center; gap:16px;
+      box-shadow:0 2px 10px rgba(0,0,0,0.06); position:sticky; top:0; z-index:100;
+    }
+    .back-btn { background:none; border:none; color:#6c63ff; font-size:28px; cursor:pointer; }
+    h1 { font-size:20px; font-weight:600; flex:1; }
+
+    .container { padding:16px; }
+    .section-title { font-size:18px; font-weight:600; margin:8px 0 16px 4px; color:#333; }
+
+    .items-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+      gap: 14px;
+    }
+
+    .art-card {
+      background:#fff; border-radius:14px; overflow:hidden;
+      box-shadow:0 4px 16px rgba(0,0,0,0.08);
+      transition: transform 0.18s ease, box-shadow 0.18s ease;
+      position:relative; cursor:pointer;
+      text-decoration:none; color:inherit;
+    }
+
+    .art-card:hover { transform:translateY(-4px); box-shadow:0 12px 28px rgba(108,99,255,0.18); }
+
+    .art-img { width:100%; aspect-ratio:1/1.15; object-fit:cover; background:#e8e8e8; }
+
+    .art-info { padding:12px; }
+    .art-title { font-size:14px; font-weight:500; margin-bottom:4px; line-height:1.3; }
+    .art-artist { font-size:12px; color:#777; margin-bottom:6px; }
+
+    .card-meta {
+      display:flex; justify-content:space-between; align-items:center; font-size:13px;
+    }
+    .price-tag {
+      background:#f0f1ff; color:#6c63ff; padding:4px 10px; border-radius:10px;
+      font-weight:500; font-size:12px;
+    }
+    .category-tag {
+      background:#e0f0ff; color:#0066cc; padding:3px 9px; border-radius:10px;
+      font-size:11px;
+    }
+
+    .save-btn {
+      background:none; border:none; color:#6c63ff; font-size:24px; cursor:pointer;
+      padding:4px; transition:transform 0.2s;
+    }
+    .save-btn:active { transform:scale(1.25); }
+
+    .unsave-anim {
+      animation: unsaveFly 0.6s forwards;
+    }
+    @keyframes unsaveFly {
+      0%   { transform:scale(1) translateY(0); opacity:1; }
+      40%  { transform:scale(0.4) translateY(-20px); opacity:0.9; }
+      100% { transform:scale(0) translateY(-60px); opacity:0; }
+    }
+
+    .loading, .empty-state { text-align:center; padding:80px 24px; color:#777; }
+    .empty-icon { font-size:64px; color:#d0d0d0; margin-bottom:16px; }
+
+    .bottom-nav {
+      position:fixed; bottom:0; left:0; width:100%; height:68px; background:#fff;
+      display:flex; justify-content:space-around; align-items:center;
+      box-shadow:0 -3px 12px rgba(0,0,0,0.09); z-index:100;
+    }
+    .nav-item { flex:1; text-align:center; font-size:11px; color:#666; cursor:pointer; }
+    .nav-item.active { color:#6c63ff; font-weight:600; }
+    .nav-item .material-symbols-outlined { font-size:26px; margin-bottom:4px; display:block; }
+    .nav-item.active .material-symbols-outlined { color:#6c63ff; }
+
+    .sentinel { height:1px; }
+  </style>
+</head>
+<body>
+
+  <div id="pullIndicator">Refreshing...</div>
+
+  <header>
+    <button class="back-btn" onclick="history.back()">
+      <span class="material-symbols-outlined">arrow_back</span>
+    </button>
+    <h1>Saved Items</h1>
+  </header>
+
+  <div class="container">
+    <div class="section-title">Your Bookmarks</div>
+
+    <div class="loading" id="loading">Loading saved artworks...</div>
+
+    <div class="items-grid" id="itemsGrid" style="display:none;"></div>
+
+    <div class="sentinel" id="sentinel"></div>
+
+    <div class="empty-state" id="emptyState" style="display:none;">
+      <span class="material-symbols-outlined empty-icon">bookmark</span>
+      <h3>No saved items yet</h3>
+      <p>Save artworks to find them quickly later.</p>
+    </div>
+  </div>
+
+  <nav class="bottom-nav">
+    <div class="nav-item" data-page="home">
+      <span class="material-symbols-outlined">home</span> Home
+    </div>
+    <div class="nav-item" data-page="explore">
+      <span class="material-symbols-outlined">explore</span> Explore
+    </div>
+    <div class="nav-item active" data-page="profile">
+      <span class="material-symbols-outlined">person</span> Profile
+    </div>
+  </nav>
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyCZ-QeZrs6qJlDk4ZMs9LP2iQ4wjJ2vcF8",
+    authDomain: "artkart-69692.firebaseapp.com",
+    projectId: "artkart-69692",
+    storageBucket: "artkart-69692.appspot.com",
+    messagingSenderId: "1067935304156",
+    appId: "1:1067935304156:web:d8c50769ecb9797f8d6719"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+
+  const grid = document.getElementById("itemsGrid");
+  const loading = document.getElementById("loading");
+  const empty = document.getElementById("emptyState");
+
+  // 🔁 Pull-to-refresh (mobile swipe down)
+  let startY = 0;
+  window.addEventListener("touchstart", e => {
+    startY = e.touches[0].clientY;
+  });
+
+  window.addEventListener("touchend", e => {
+    const endY = e.changedTouches[0].clientY;
+    if (endY - startY > 120) {
+      location.reload();
+    }
+  });
+
+  auth.onAuthStateChanged(async user => {
+    if (!user) {
+      location.href = "login.html";
+      return;
+    }
+
+    try {
+      const snap = await db
+        .collection("saves")
+        .where("userId", "==", user.uid)
+        .orderBy("savedAt", "desc")
+        .get();
+
+      loading.style.display = "none";
+
+      if (snap.empty) {
+        empty.style.display = "block";
+        return;
+      }
+
+      grid.style.display = "grid";
+      grid.innerHTML = "";
+
+      snap.forEach(doc => {
+        const data = doc.data();
+
+        const card = document.createElement("a");
+        card.className = "art-card";
+        card.href = `artwork.html?id=${data.artId}`;
+
+        card.innerHTML = `
+          <img class="art-img" src="${data.imageUrl || 'https://via.placeholder.com/300'}">
+          <div class="art-info">
+            <div class="art-title">${data.title || 'Untitled'}</div>
+            <div class="art-artist">by ${data.artistName || 'Unknown'}</div>
+            <div class="card-meta">
+              <span class="price-tag">₹${(data.price || 0).toLocaleString()}</span>
+              <span class="material-symbols-outlined" style="color:#6c63ff;">
+                bookmark
+              </span>
+            </div>
+          </div>
+        `;
+
+        grid.appendChild(card);
+      });
+
+    } catch (err) {
+      loading.textContent = "Failed to load saved items.";
+      console.error(err);
+    }
+  });
+
+  // Bottom navigation
+  document.querySelectorAll(".nav-item").forEach(item => {
+    item.addEventListener("click", () => {
+      const page = item.dataset.page;
+      if (page === "home") location.href = "home.html";
+      if (page === "explore") location.href = "explore.html";
+    });
+  });
+</script>
+</body>
+</html>

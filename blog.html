@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ArtKart Blog – Learn, Buy & Sell Art Online</title>
+<meta name="description" content="ArtKart Blog helps you learn how to buy, sell and understand original artwork. Guides for artists and buyers.">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+
+<style>
+body{
+    margin:0;
+    font-family:'Poppins',sans-serif;
+    background:#f5f5f5;
+    color:#333;
+}
+header{
+    background:#111;
+    padding:15px 5%;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+header h1{
+    color:#fff;
+    font-size:22px;
+}
+nav a{
+    color:#fff;
+    margin-left:20px;
+    text-decoration:none;
+    font-size:14px;
+}
+.hero{
+    background:#fff;
+    padding:60px 5%;
+    text-align:center;
+}
+.hero h2{
+    font-size:32px;
+}
+.section{
+    padding:40px 5%;
+}
+.categories{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+    gap:20px;
+}
+.category-box{
+    background:#fff;
+    padding:30px;
+    text-align:center;
+    border-radius:10px;
+    box-shadow:0 5px 15px rgba(0,0,0,0.05);
+}
+.posts{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+    gap:25px;
+}
+.post-card{
+    background:#fff;
+    border-radius:10px;
+    overflow:hidden;
+    box-shadow:0 5px 15px rgba(0,0,0,0.05);
+}
+.post-card img{
+    width:100%;
+    height:180px;
+    object-fit:cover;
+}
+.post-content{
+    padding:20px;
+}
+.post-content h3{
+    margin:0 0 10px 0;
+}
+.post-content p{
+    font-size:14px;
+    color:#666;
+}
+.read-more{
+    display:inline-block;
+    margin-top:10px;
+    font-size:14px;
+    text-decoration:none;
+    color:#000;
+    font-weight:600;
+}
+footer{
+    background:#111;
+    color:#fff;
+    padding:40px 5%;
+    margin-top:50px;
+}
+.footer-links{
+    display:flex;
+    flex-wrap:wrap;
+    gap:20px;
+}
+.footer-links a{
+    color:#ccc;
+    text-decoration:none;
+    font-size:14px;
+}
+@media(max-width:768px){
+    .hero h2{
+        font-size:24px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+<h1>ArtKart Blog</h1>
+<nav>
+<a href="/">Home</a>
+<a href="/explore.html">Explore Art</a>
+<a href="/sell.html">Sell Art</a>
+<a href="/blog.html">Blog</a>
+<a href="/contact.html">Contact</a>
+</nav>
+</header>
+
+<section class="hero">
+<h2>Learn, Buy & Sell Art Smarter</h2>
+<p>Expert guides for artists and art lovers. Everything about original artwork, pricing, authenticity and shipping.</p>
+</section>
+
+<section class="section">
+<h2>Categories</h2>
+<div class="categories">
+<div class="category-box">Art Buying Guide</div>
+<div class="category-box">Artist Growth</div>
+<div class="category-box">Art Education</div>
+<div class="category-box">Shipping & Orders</div>
+</div>
+</section>
+
+<section class="section">
+<h2>Latest Articles</h2>
+<div class="posts">
+
+<div class="post-card">
+<img src="images/art1.jpg" alt="How to Buy Original Art">
+<div class="post-content">
+<h3>How to Buy Original Art Online Safely</h3>
+<p>Learn how to check authenticity, pricing and safe payment methods when buying art online.</p>
+<a href="#" class="read-more">Read More →</a>
+</div>
+</div>
+
+<div class="post-card">
+<img src="images/art2.jpg" alt="How to Sell Art">
+<div class="post-content">
+<h3>How to Sell Your Art Online Successfully</h3>
+<p>A beginner-friendly guide for artists who want to grow and earn online.</p>
+<a href="#" class="read-more">Read More →</a>
+</div>
+</div>
+
+<div class="post-card">
+<img src="images/art3.jpg" alt="Art Pricing Guide">
+<div class="post-content">
+<h3>How to Price Your Artwork as a Beginner</h3>
+<p>Understand market value, materials cost and profit strategy.</p>
+<a href="#" class="read-more">Read More →</a>
+</div>
+</div>
+
+</div>
+</section>
+
+<footer>
+<h3>About ArtKart</h3>
+<p>ArtKart is an online art marketplace where artists sell original artwork and buyers discover authentic creations.</p>
+
+<div class="footer-links">
+<a href="/about.html">About Us</a>
+<a href="/contact.html">Contact</a>
+<a href="/privacy-policy.html">Privacy Policy</a>
+<a href="/terms.html">Terms & Conditions</a>
+<a href="/refund-policy.html">Refund Policy</a>
+<a href="/disclaimer.html">Disclaimer</a>
+</div>
+
+<p style="margin-top:20px;">© 2026 ArtKart. All rights reserved.</p>
+</footer>
+
+</body>
+</html>

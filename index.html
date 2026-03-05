@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ArtKart – Original Art Marketplace</title>
+  <meta name="description" content="ArtKart is an online art marketplace to buy original paintings, wall art and handmade artworks from artists.">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="manifest" href="/manifest.json">
+<script>
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/sw.js");
+}
+</script>
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "ArtKart",
+  "url": "https://art-kart.netlify.app",
+  "logo": "https://art-kart.netlify.app/icons/artkart.png"
+}
+</script>
+<link rel="icon" type="image/png" href="icons/favicon.png">
+<link rel="apple-touch-icon" href="icons/artKart.png">
+  <!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-WM217K82H4"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-WM217K82H4');
+</script>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+
+<style>
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
+  font-family:'Poppins',sans-serif;
+}
+
+body{
+  background:#0b0b0b;
+  color:#fff;
+  overflow-x:hidden;
+}
+
+/* ===== HEADER ===== */
+header{
+  position:sticky;
+  top:0;
+  z-index:100;
+  background:rgba(15,15,15,.9);
+  backdrop-filter:blur(10px);
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:14px 22px;
+  border-bottom:1px solid rgba(255,255,255,.08);
+}
+
+header img{
+  width:46px;
+  border-radius:8px;
+}
+
+header h1{
+  font-size:22px;
+  font-weight:700;
+  letter-spacing:.5px;
+}
+
+/* ===== HERO ===== */
+.hero{
+  min-height:75vh;
+  background:
+    linear-gradient(rgba(0,0,0,.65),rgba(0,0,0,.65)),
+    url("https://images.unsplash.com/photo-1513364776144-60967b0f800f");
+  background-size:cover;
+  background-position:center;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  padding:40px 16px;
+}
+
+.hero h2{
+  font-size:38px;
+  font-weight:700;
+}
+
+.hero p{
+  max-width:640px;
+  margin:16px auto 0;
+  font-size:15px;
+  opacity:.9;
+}
+
+/* ===== SCROLL BACKGROUND ===== */
+.scroll-bg{
+  background-attachment:fixed;
+  background-size:cover;
+  background-position:center;
+  transition:background-image 1s ease;
+}
+
+/* ===== SECTIONS ===== */
+.section{
+  padding:80px 16px;
+  background:rgba(0,0,0,.55);
+  backdrop-filter:blur(6px);
+}
+
+.section-title{
+  font-size:24px;
+  font-weight:700;
+  margin-bottom:30px;
+}
+
+/* ===== GRID ===== */
+.grid{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:34px;
+}
+
+/* ===== DARK CARD ===== */
+.card{
+  background:linear-gradient(160deg,#141414,#0d0d0d);
+  border-radius:22px;
+  overflow:hidden;
+  border:1px solid rgba(255,255,255,.08);
+  box-shadow:0 25px 60px rgba(0,0,0,.6);
+  transform:translateY(40px);
+  opacity:0;
+  transition:.6s ease;
+}
+
+.card.show{
+  transform:translateY(0);
+  opacity:1;
+}
+
+.card:hover{
+  transform:scale(1.03);
+  border-color:#6c63ff;
+}
+
+.card img{
+  width:100%;
+  height:300px;
+  object-fit:cover;
+}
+
+.card-body{
+  padding:20px;
+}
+
+.title{
+  font-size:18px;
+  font-weight:600;
+}
+
+.artist{
+  font-size:13px;
+  opacity:.7;
+  margin:6px 0 10px;
+}
+
+.meta{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.price{
+  font-weight:700;
+  color:#6c63ff;
+}
+
+.likes{
+  background:rgba(255,71,87,.15);
+  color:#ff6b81;
+  padding:6px 16px;
+  border-radius:20px;
+  font-size:13px;
+}
+
+/* ===== FOOTER ===== */
+footer{
+  background:#070707;
+  border-top:1px solid rgba(255,255,255,.08);
+  padding:50px 20px 20px;
+}
+
+.footer-grid{
+  max-width:1100px;
+  margin:auto;
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+  gap:30px;
+}
+
+footer h3{
+  font-size:16px;
+  margin-bottom:12px;
+}
+
+footer p,footer a{
+  font-size:13px;
+  opacity:.75;
+  line-height:1.8;
+  color:#fff;
+  text-decoration:none;
+}
+
+footer a:hover{
+  opacity:1;
+}
+
+.footer-bottom{
+  text-align:center;
+  margin-top:40px;
+  font-size:12px;
+  opacity:.5;
+}
+
+
+.auth-buttons{
+  margin-left:auto;
+  display:flex;
+  gap:10px;
+}
+
+.btn-outline{
+  padding:6px 14px;
+  border:1px solid #6c63ff;
+  color:#6c63ff;
+  border-radius:20px;
+  font-size:13px;
+  transition:0.3s;
+  border:1px solid #fff;
+}
+.btn-outline:hover{
+  background:#6c63ff;
+  color:#6c63ff;
+}
+
+.btn-fill{
+  padding:6px 14px;
+  background:#6c63ff;
+  color:#fff;
+  border-radius:20px;
+  font-size:13px;
+  transition:0.3s;
+  border:1px solid #6c63ff;
+}
+.btn-fill:hover{
+  opacity:0.85;
+}
+
+
+
+.hero{
+  margin:20px;
+  border-radius:20px;
+  padding:50px 24px;
+  background:
+    linear-gradient(rgba(0,0,0,0.7),rgba(0,0,0,0.7)),
+    url("https://images.unsplash.com/photo-1549880338-65ddcdfd017b");
+  background-size:cover;
+  background-position:center;
+  animation:fadeUp 1s ease;
+}
+
+.hero-content{
+  max-width:500px;
+}
+
+.hero h2{
+  font-size:26px;
+  color:#fff;
+  font-weight:600;
+  margin-bottom:10px;
+}
+
+.hero p{
+  color:#ccc;
+  font-size:14px;
+  margin-bottom:24px;
+}
+
+.hero-actions{
+  display:flex;
+  gap:12px;
+  flex-wrap:wrap;
+}
+
+.btn-main{
+  padding:12px 26px;
+  background:#6c63ff;
+  color:#fff;
+  border-radius:30px;
+  font-size:14px;
+  border:1px solid #6c63ff;
+}
+.btn-main:hover{opacity:.9}
+
+.btn-secondary{
+  padding:12px 26px;
+  border:1px solid #6c63ff;
+  color:#6c63ff;
+  border-radius:30px;
+  font-size:14px;
+  border:1px solid #fff;
+}
+
+@keyframes fadeUp{
+  from{opacity:0; transform:translateY(20px)}
+  to{opacity:1; transform:translateY(0)}
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <img src="icons/ArtKart.png">
+  <h1>ArtKart</h1>
+  <div class="auth-buttons">
+  <button onclick= location.href="login.html" class="btn-outline">Login</button>
+  <button onclick= location.href="register.html" class="btn-fill">Sign Up</button>
+</div>
+</header>
+<section class="hero">
+  <div class="hero-content">
+    <h2>Discover, Buy & Sell <br> Original Artworks</h2>
+    <p>India’s modern art marketplace for real artists & real collectors.</p>
+
+    <div class="hero-actions">
+      <button onclick= location.href="home.html" class="btn-main">🎨 Get Started</button>
+      <button onclick= location.href="login.html" class="btn-secondary">Login</button>
+    </div>
+  </div>
+</section>
+
+
+
+<div class="scroll-bg" id="scrollBg">
+
+<section class="section">
+  <div class="section-title">Latest Artworks</div>
+  <div class="grid" id="latestGrid"></div>
+</section>
+
+<section class="section">
+  <div class="section-title">🔥 Trending Artworks</div>
+  <div class="grid" id="trendingGrid"></div>
+</section>
+
+</div>
+
+<footer>
+  <div class="footer-grid">
+    <div>
+     <a href="about.html"> <h3>About ArtKart</h3> </a>
+      <p>ArtKart is an online marketplace focused on original and authentic artworks. Every piece comes directly from the artist.</p>
+    </div>
+
+    <div>
+      <h3>Explore</h3>
+      <a href="home.html">Home</a><br>
+      <a href="explore.html">Latest Art</a><br>
+      <a href="home.html">Trending</a><br>
+      <a href="seller-profile.html">Become an Artist</a>
+    </div>
+
+    <div>
+      <h3>Support</h3>
+      <a href="#">How it Works</a><br>
+      <a href="#">Refund Policy</a><br>
+      <a href="contact.html">Contact Us</a>
+    </div>
+
+    <div>
+      <h3>Connect</h3>
+
+      <a href="https://youtube.com/@techaromax?si=JDODmm9wPcTzxgYf"> YouTube</a><br>
+
+    </div>
+  </div>
+
+  <div class="footer-bottom">
+    <a href="about.html">About   |</a>
+    <a href="privacy-policy.html">Privacy Policy   |</a>
+    <a href="contact.html">Contact   |</a>
+    <br>
+    © 2026 ArtKart • Crafted for Art Lovers 🎨
+  </div>
+</footer>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+<script>
+firebase.initializeApp({
+  apiKey: "AIzaSyCZ-QeZrs6qJlDk4ZMs9LP2iQ4wjJ2vcF8",
+  authDomain: "artkart-69692.firebaseapp.com",
+  projectId: "artkart-69692"
+});
+const db = firebase.firestore();
+
+/* ===== BACKGROUND ON SCROLL ===== */
+const bgImages=[
+ "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee",
+ "https://images.unsplash.com/photo-1496317899792-9d7dbcd928a1",
+ "https://images.unsplash.com/photo-1472214103451-9374bd1c798e",
+ "https://images.unsplash.com/photo-1517694712202-14dd9538aa97"
+];
+let bgIndex=0;
+window.addEventListener("scroll",()=>{
+  if(window.scrollY%450<10){
+    bgIndex=(bgIndex+1)%bgImages.length;
+    scrollBg.style.backgroundImage=
+      `linear-gradient(rgba(0,0,0,.65),rgba(0,0,0,.65)),url(${bgImages[bgIndex]})`;
+  }
+});
+
+/* ===== ANIMATION ===== */
+const observer=new IntersectionObserver(e=>{
+  e.forEach(x=>{if(x.isIntersecting)x.target.classList.add("show");});
+},{threshold:.2});
+
+function makeCard(doc){
+  const d=doc.data();
+  const c=document.createElement("div");
+  c.className="card";
+  c.innerHTML=`
+    <img src="${d.imageUrl}">
+    <div class="card-body">
+      <div class="title">${d.title}</div>
+      <div class="artist">by ${d.artistName}</div>
+      <div class="meta">
+        <div class="price">₹${d.price}</div>
+        <div class="likes">❤️ ${d.likeCount||0}</div>
+      </div>
+    </div>`;
+  observer.observe(c);
+  return c;
+}
+
+db.collection("arts")
+  .limit(6)
+  .get()
+  .then(snap=>{
+    snap.forEach(d=>latestGrid.appendChild(makeCard(d)));
+  })
+  .catch(err=>console.error(err));
+
+db.collection("arts")
+  .orderBy("likeCount","desc")
+  .limit(6)
+  .get()
+  .then(snap=>{
+    snap.forEach(d=>trendingGrid.appendChild(makeCard(d)));
+  })
+  .catch(err=>console.error(err));
+</script>
+
+</body>
+</html>

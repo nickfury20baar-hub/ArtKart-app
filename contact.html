@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contact — ArtKart</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; font-family:'Poppins',sans-serif; }
+  body { background:#f5f6fa; padding-bottom:80px; }
+
+  header {
+    background:#ffffff; padding:14px 16px; display:flex; align-items:center; gap:12px;
+    box-shadow:0 2px 10px rgba(0,0,0,0.06);
+    position:sticky; top:0; z-index:100;
+  }
+  .back-btn { cursor:pointer; font-size:24px; color:#6c63ff; }
+  header h1 { font-size:20px; font-weight:600; color:#2d2d2d; flex:1; text-align:center; }
+
+  .form-box {
+    max-width:500px; margin:32px auto; background:#fff; padding:24px; border-radius:16px;
+    box-shadow:0 6px 20px rgba(0,0,0,0.08);
+  }
+  .form-box input, .form-box textarea {
+    width:100%; padding:12px 14px; margin-bottom:14px; border:1px solid #ccc; border-radius:8px;
+    font-size:14px; outline:none;
+  }
+  .form-box button {
+    width:100%; padding:12px; border:none; border-radius:8px;
+    background:#6c63ff; color:#fff; font-size:16px; font-weight:500; cursor:pointer;
+    transition:transform 0.14s;
+  }
+  .form-box button:active { transform:scale(0.96); }
+
+  footer {
+    margin:40px 0 16px; text-align:center; font-size:12px; color:#888;
+  }
+</style>
+</head>
+
+<body>
+
+<header>
+  <span class="material-symbols-outlined back-btn" onclick="location.href='home.html'">arrow_back</span>
+  <h1>Contact Us</h1>
+</header>
+
+<section class="form-box">
+  <form id="contactForm">
+    <input type="text" placeholder="Your Name" id="name" required>
+    <input type="email" placeholder="Email" id="email" required>
+    <textarea placeholder="Message" id="message" rows="5" required></textarea>
+    <button type="submit">Send Message</button>
+  </form>
+</section>
+
+<footer>
+  <a href="contact.html">Contact</a> &nbsp;&nbsp;|&nbsp;&nbsp;
+  <a href="privacy-policy.html">Privacy Policy</a>
+  <p>© 2026 ArtKart — All Rights Reserved</p>
+</footer>
+
+<!-- EmailJS SDK -->
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
+<script>
+  (function(){
+    emailjs.init("IYnrAl4YzaoDyjHD6"); // 🔹 Replace with your EmailJS public key
+  })();
+
+  const form = document.getElementById('contactForm');
+  form.addEventListener('submit', function(e){
+    e.preventDefault();
+
+    const serviceID = "service_pcwxw16";   // 🔹 Replace with your Service ID
+    const templateID = "template_08scj66"; // Template ID
+
+    const params = {
+      name: document.getElementById('name').value,
+      email: document.getElementById('email').value,
+      message: document.getElementById('message').value,
+      title: "ArtKart Contact Form"
+    };
+
+    form.querySelector('button').disabled = true;
+    form.querySelector('button').textContent = "Sending...";
+
+    emailjs.send(serviceID, templateID, params)
+      .then(() => {
+        
+        form.querySelector('button').disabled = false;
+        form.querySelector('button').textContent = "Send Message";
+      }, (err) => {
+        alert("❌ Failed to send message. Try again.");
+        console.error(err);
+        form.querySelector('button').disabled = false;
+        form.querySelector('button').textContent = "Send Message";
+      });
+  });
+</script>
+
+</body>
+</html>

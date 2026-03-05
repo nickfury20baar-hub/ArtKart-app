@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Admin Panel</title>
+  <style>
+    body{font-family:Arial;background:#f5f5f5;padding:20px;}
+    .card{
+      background:#fff;
+      padding:20px;
+      border-radius:12px;
+      box-shadow:0 5px 15px rgba(0,0,0,.1);
+      margin-bottom:20px;
+    }
+    input{
+      width:100%;
+      padding:10px;
+      margin-bottom:10px;
+      border-radius:8px;
+      border:1px solid #ddd;
+    }
+    button{
+      padding:10px 15px;
+      border:none;
+      border-radius:8px;
+      background:#6c63ff;
+      color:#fff;
+      cursor:pointer;
+    }
+    .art-item{
+      display:flex;
+      justify-content:space-between;
+      margin-bottom:8px;
+    }
+    .delete-btn{
+      background:red;
+    }
+  </style>
+</head>
+<body>
+
+<h2>Admin Dashboard 👑</h2>
+
+<div class="card">
+  <h3>Add Artwork</h3>
+  <input type="text" id="title" placeholder="Artwork Title">
+  <input type="text" id="image" placeholder="Image URL">
+  <input type="text" id="artist" placeholder="Artist Name">
+  <button id="addBtn">Add Artwork</button>
+</div>
+
+<div class="card">
+  <h3>All Artworks</h3>
+  <div id="artList">Loading...</div>
+</div>
+
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+/* SAME CONFIG */
+const firebaseConfig = {
+    apiKey: "AIzaSyCZ-QeZrs6qJlDk4ZMs9LP2iQ4wjJ2vcF8",
+  authDomain: "artkart-69692.firebaseapp.com",
+  projectId: "artkart-69692",
+  storageBucket: "artkart-69692.appspot.com",
+  messagingSenderId: "1067935304156",
+  appId: "1:1067935304156:web:d8c50769ecb9797f8d6719"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+onAuthStateChanged(auth, async (user) => {
+
+  if (!user) return window.location.href="login.html";
+
+  const userDoc = await getDoc(doc(db,"users",user.uid));
+  if (!userDoc.exists() || userDoc.data().role !== "admin")
+    return window.location.href="index.html";
+
+  loadArtworks();
+});
+
+/* ADD ARTWORK */
+document.getElementById("addBtn").onclick = async () => {
+
+  const title = document.getElementById("title").value;
+  const image = document.getElementById("image").value;
+  const artist = document.getElementById("artist").value;
+
+  if (!title || !image || !artist) return alert("Fill all fields");
+
+  await addDoc(collection(db,"artworks"),{
+    title,
+    image,
+    artist,
+    createdAt: new Date()
+  });
+
+  alert("Artwork Added!");
+  loadArtworks();
+};
+
+/* LOAD ARTWORKS */
+async function loadArtworks(){
+
+  const snapshot = await getDocs(collection(db,"artworks"));
+  const artList = document.getElementById("artList");
+  artList.innerHTML = "";
+
+  snapshot.forEach(docSnap => {
+
+    const data = docSnap.data();
+
+    artList.innerHTML += `
+      <div class="art-item">
+        <span>${data.title}</span>
+        <button class="delete-btn" onclick="deleteArt('${docSnap.id}')">Delete</button>
+      </div>
+    `;
+  });
+}
+
+/* DELETE FUNCTION */
+window.deleteArt = async (id) => {
+
+  await deleteDoc(doc(db,"artworks",id));
+  alert("Deleted");
+  loadArtworks();
+};
+
+</script>
+
+</body>
+</html>

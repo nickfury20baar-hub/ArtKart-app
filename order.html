@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Confirm Order | ArtKart</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
+  font-family:'Poppins',sans-serif;
+}
+
+body{
+  background:#f5f6fa;
+  padding:20px;
+}
+
+.container{
+  max-width:520px;
+  margin:auto;
+  background:#fff;
+  padding:20px;
+  border-radius:16px;
+  box-shadow:0 10px 30px rgba(0,0,0,.08);
+}
+
+.art-img{
+  width:100%;
+  height:260px;
+  object-fit:cover;
+  border-radius:14px;
+  margin-bottom:15px;
+  background:#eee;
+}
+
+h3{
+  margin-bottom:6px;
+}
+
+.price{
+  font-weight:600;
+  color:#6c63ff;
+  margin-bottom:4px;
+}
+
+.artist{
+  font-size:14px;
+  color:#555;
+  margin-bottom:8px;
+}
+
+.buyer{
+  font-size:14px;
+  margin-top:10px;
+  color:#333;
+}
+
+button{
+  width:100%;
+  padding:14px;
+  margin-top:20px;
+  background:#25D366;
+  color:#fff;
+  border:none;
+  border-radius:12px;
+  font-size:15px;
+  font-weight:500;
+  cursor:pointer;
+  transition:0.2s;
+}
+
+button:hover{
+  opacity:0.9;
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <img id="artImg" class="art-img">
+
+  <h3 id="artName">Loading...</h3>
+  <p class="price" id="artPrice"></p>
+  <p class="artist" id="artArtist"></p>
+
+  <p class="buyer">
+    Buyer: <b id="buyerName"></b><br>
+    City: <b id="buyerCity"></b>
+  </p>
+
+  <button id="orderBtn">Order via WhatsApp</button>
+
+</div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+<script>
+/* SAME FIREBASE CONFIG */
+const firebaseConfig = {
+  apiKey: "AIzaSyCZ-QeZrs6qJlDk4ZMs9LP2iQ4wjJ2vcF8",
+  authDomain: "artkart-69692.firebaseapp.com",
+  projectId: "artkart-69692",
+  storageBucket: "artkart-69692.appspot.com",
+  messagingSenderId: "1067935304156",
+  appId: "1:1067935304156:web:d8c50769ecb9797f8d6719"
+};
+
+if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+/* GET URL PARAMS */
+const params = new URLSearchParams(window.location.search);
+const artId = params.get("id");
+const buyer = params.get("buyer");
+const city = params.get("city");
+
+if(!artId || !buyer || !city){
+  alert("Invalid order details");
+  throw new Error("Missing parameters");
+}
+
+document.getElementById("buyerName").innerText = buyer;
+document.getElementById("buyerCity").innerText = city;
+
+let artworkData = null;
+
+/* LOAD ARTWORK FROM FIRESTORE */
+async function loadArtwork(){
+  try{
+    const doc = await db.collection("arts").doc(artId).get();
+
+    if(!doc.exists){
+      alert("Artwork not found");
+      return;
+    }
+
+    artworkData = doc.data();
+
+    document.getElementById("artImg").src =
+      artworkData.imageUrl || "https://via.placeholder.com/500x300";
+
+    document.getElementById("artName").innerText =
+      artworkData.title || "Untitled";
+
+    document.getElementById("artPrice").innerText =
+      "Price: ₹" + (artworkData.price || 0).toLocaleString();
+
+    document.getElementById("artArtist").innerText =
+      "Artist: " + (artworkData.artistName || "Unknown");
+
+  }catch(error){
+    console.error(error);
+    alert("Error loading artwork");
+  }
+}
+
+loadArtwork();
+
+/* WHATSAPP ORDER */
+document.getElementById("orderBtn").onclick = () => {
+
+  const orderId = "AK" + Date.now().toString().slice(-6);
+
+  const message =
+`Hello ArtKart,
+
+I would like to purchase this artwork.
+
+Artwork: ${artworkData.title}
+Price: ₹${artworkData.price}
+Artist: ${artworkData.artistName}
+
+Buyer Name: ${buyer}
+City: ${city}
+
+Order ID: ${orderId}
+
+Please guide me for payment process.`;
+
+  const phone = "919628220891"; // ✅ YOUR WHATSAPP NUMBER (country code included)
+
+  window.open(
+    "https://wa.me/" + phone + "?text=" + encodeURIComponent(message),
+    "_blank"
+  );
+};
+</script>
+
+</body>
+</html>

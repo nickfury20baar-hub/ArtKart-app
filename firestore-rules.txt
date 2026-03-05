@@ -1,0 +1,99 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /* ---------- USERS ---------- */
+    match /users/{userId} {
+      allow read: if true;
+      allow write: if request.auth != null
+        && request.auth.uid == userId;
+    }
+
+    /* ---------- ARTS ---------- */
+    match /arts/{artId} {
+      allow read: if true;
+
+      allow create: if request.auth != null;
+
+      // 🔥 SAFE UPDATE (likes, views, saves count)
+      allow update: if request.auth != null
+        && (
+          // Artist full access
+          request.auth.uid == resource.data.artistId
+          ||
+          // Public can update ONLY counters
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly([
+              'views',
+              'likeCount',
+              'saveCount',
+              'shareCount'
+            ])
+        );
+
+      allow delete: if request.auth != null
+        && request.auth.uid == resource.data.artistId;
+    }
+
+    /* ---------- LIKES ---------- */
+    match /likes/{likeId} {
+      allow read: if request.auth != null;
+
+      allow create: if request.auth != null
+        && request.auth.uid == request.resource.data.userId;
+
+      allow delete: if request.auth != null
+        && request.auth.uid == resource.data.userId;
+
+      allow update: if false;
+    }
+
+    /* ---------- SAVES ---------- */
+    match /saves/{saveId} {
+      allow read: if request.auth != null;
+
+      allow create: if request.auth != null
+        && request.auth.uid == request.resource.data.userId;
+
+      allow delete: if request.auth != null
+        && request.auth.uid == resource.data.userId;
+
+      allow update: if false;
+    }
+
+    /* ---------- COMMENTS ---------- */
+    match /comments/{commentId} {
+      allow read: if request.auth != null;
+
+      allow create: if request.auth != null
+        && request.auth.uid == request.resource.data.userId;
+
+      allow update: if request.auth != null
+        && request.auth.uid == resource.data.userId;
+
+      allow delete: if request.auth != null
+        && request.auth.uid == resource.data.userId;
+    }
+
+    /* ---------- ART VIEWS (1 USER = 1 VIEW) ---------- */
+    match /artViews/{viewId} {
+      allow read: if request.auth != null;
+
+      allow create: if request.auth != null
+        && request.auth.uid == request.resource.data.userId;
+
+      allow update, delete: if false;
+    }
+
+    /* ---------- ART SHARES ---------- */
+    match /artShares/{shareId} {
+      allow read: if request.auth != null;
+
+      allow create: if request.auth != null
+        && request.auth.uid == request.resource.data.userId;
+
+      allow update, delete: if false;
+    }
+
+  }
+}

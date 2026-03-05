@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ArtKart — Register</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet">
+
+<style>
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family:'Poppins',sans-serif;
+}
+
+body{
+background:#f5f6fa;
+min-height:100vh;
+display:flex;
+flex-direction:column;
+}
+
+header{
+background:#fff;
+padding:14px 16px;
+display:flex;
+align-items:center;
+gap:10px;
+box-shadow:0 2px 10px rgba(0,0,0,0.06);
+}
+
+header h1{
+font-size:20px;
+}
+
+main{
+flex:1;
+display:flex;
+justify-content:center;
+align-items:center;
+padding:20px;
+}
+
+.form-container{
+background:#fff;
+padding:32px 24px;
+border-radius:20px;
+width:100%;
+max-width:420px;
+box-shadow:0 8px 30px rgba(0,0,0,0.08);
+}
+
+.form-title{
+text-align:center;
+font-size:24px;
+margin-bottom:25px;
+}
+
+.form-group{
+position:relative;
+margin-bottom:20px;
+}
+
+.form-group input{
+width:100%;
+padding:14px 16px 14px 48px;
+border:1.5px solid #ddd;
+border-radius:12px;
+font-size:14px;
+}
+
+.form-group input:focus{
+outline:none;
+border-color:#6c63ff;
+box-shadow:0 0 0 3px rgba(108,99,255,0.15);
+}
+
+.icon{
+position:absolute;
+left:16px;
+top:50%;
+transform:translateY(-50%);
+color:#777;
+}
+
+.toggle-password{
+position:absolute;
+right:16px;
+top:50%;
+transform:translateY(-50%);
+background:none;
+border:none;
+cursor:pointer;
+}
+
+.btn{
+width:100%;
+padding:14px;
+border:none;
+background:#6c63ff;
+color:#fff;
+border-radius:12px;
+font-size:15px;
+cursor:pointer;
+margin-top:10px;
+}
+
+.btn:hover{
+background:#5a52e0;
+}
+
+.error-msg{
+text-align:center;
+margin-top:10px;
+font-size:13px;
+color:#ff4757;
+min-height:18px;
+}
+
+.login-link{
+text-align:center;
+margin-top:20px;
+font-size:14px;
+}
+
+.login-link a{
+color:#6c63ff;
+text-decoration:none;
+font-weight:500;
+}
+
+footer{
+text-align:center;
+padding:16px;
+font-size:12px;
+color:#888;
+}
+.back-btn{
+cursor:pointer;
+font-size:26px;
+color:#333;
+}
+.site-footer{
+background:#ffffff;
+padding:18px 10px 90px;
+text-align:center;
+border-top:1px solid #eee;
+}
+
+.footer-links{
+display:flex;
+flex-wrap:wrap;
+justify-content:center;
+gap:14px;
+margin-bottom:8px;
+font-size:13px;
+}
+
+.footer-links a{
+text-decoration:none;
+color:#666;
+}
+
+.footer-links a:hover{
+color:#6c63ff;
+}
+
+.site-footer p{
+font-size:12px;
+color:#888;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <span class="material-symbols-outlined back-btn" onclick="history.back()">arrow_back</span>
+  <h1>ArtKart</h1>
+</header>
+
+<main>
+<div class="form-container">
+<h2 class="form-title">Create Account</h2>
+
+<form id="registerForm">
+
+<div class="form-group">
+<span class="material-symbols-outlined icon">mail</span>
+<input type="email" id="email" placeholder="Email" required>
+</div>
+
+<div class="form-group">
+<span class="material-symbols-outlined icon">lock</span>
+<input type="password" id="password" placeholder="Password (min 6 characters)" required>
+<button type="button" class="toggle-password" id="togglePassword">
+<span class="material-symbols-outlined">visibility</span>
+</button>
+</div>
+
+<button type="submit" class="btn" id="registerBtn">Create Account</button>
+
+<div class="error-msg" id="errorMsg"></div>
+
+</form>
+
+<p class="login-link">
+Already have an account? <a href="login.html">Login</a>
+</p>
+
+</div>
+</main>
+
+<footer class="site-footer">
+  <div class="footer-links">
+    <a href="about.html">About</a>
+    <a href="contact.html">Contact</a>
+    <a href="privacy.html">Privacy Policy</a>
+    <a href="blog.html">Blog</a>
+    
+  </div>
+
+  <p>© 2026 ArtKart. All rights reserved.</p>
+</footer>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+
+<script>
+const firebaseConfig = {
+apiKey: "AIzaSyCZ-QeZrs6qJlDk4ZMs9LP2iQ4wjJ2vcF8",
+authDomain: "artkart-69692.firebaseapp.com",
+projectId: "artkart-69692",
+storageBucket: "artkart-69692.appspot.com",
+messagingSenderId: "1067935304156",
+appId: "1:1067935304156:web:d8c50769ecb9797f8d6719"
+};
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+
+const form = document.getElementById("registerForm");
+const errorMsg = document.getElementById("errorMsg");
+const registerBtn = document.getElementById("registerBtn");
+
+document.getElementById("togglePassword").addEventListener("click", ()=>{
+const pass = document.getElementById("password");
+const icon = document.querySelector("#togglePassword span");
+
+if(pass.type==="password"){
+pass.type="text";
+icon.textContent="visibility_off";
+}else{
+pass.type="password";
+icon.textContent="visibility";
+}
+});
+
+form.addEventListener("submit", async(e)=>{
+e.preventDefault();
+
+const email = document.getElementById("email").value.trim();
+const password = document.getElementById("password").value;
+
+errorMsg.textContent="";
+registerBtn.textContent="Creating...";
+registerBtn.disabled=true;
+
+if(password.length < 6){
+errorMsg.textContent="Password must be at least 6 characters.";
+registerBtn.textContent="Create Account";
+registerBtn.disabled=false;
+return;
+}
+
+try{
+await auth.createUserWithEmailAndPassword(email,password);
+window.location.href="upload.html";
+}
+catch(err){
+let message="Registration failed.";
+if(err.code==="auth/email-already-in-use") message="Email already registered.";
+if(err.code==="auth/invalid-email") message="Invalid email.";
+if(err.code==="auth/weak-password") message="Password too weak.";
+errorMsg.textContent=message;
+}
+
+registerBtn.textContent="Create Account";
+registerBtn.disabled=false;
+});
+</script>
+
+</body>
+</html>

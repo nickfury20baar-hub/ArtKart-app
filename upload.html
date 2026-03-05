@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ArtKart — Upload Artwork</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+  <!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-WM217K82H4"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-WM217K82H4');
+</script>
+
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; font-family:'Poppins',sans-serif; }
+    body { background:#f5f6fa; min-height:100vh; color:#222; padding-bottom:90px; }
+
+    header {
+      background:#ffffff; padding:14px 16px; display:flex; align-items:center; gap:12px;
+      box-shadow:0 2px 10px rgba(0,0,0,0.06); position:sticky; top:0; z-index:100;
+    }
+    .logo { width:38px; height:38px; border-radius:10px; background:linear-gradient(135deg,#6c63ff,#9f9cff); }
+    header h1 { font-size:21px; font-weight:600; color:#2d2d2d; flex:1; }
+
+    .container { padding:24px 16px; max-width:480px; margin:0 auto; }
+
+    .card {
+      background:#ffffff; border-radius:16px; padding:28px 20px;
+      box-shadow:0 8px 32px rgba(0,0,0,0.08);
+    }
+
+    h2 { text-align:center; font-size:22px; font-weight:600; margin-bottom:28px; color:#222; }
+
+    .form-group { position:relative; margin-bottom:24px; }
+    .form-group label {
+      position:absolute; top:14px; left:16px; color:#888; font-size:14px;
+      transition:all 0.2s; pointer-events:none;
+    }
+    .form-group input:focus + label,
+    .form-group input:not(:placeholder-shown) + label,
+    .form-group textarea:focus + label,
+    .form-group textarea:not(:placeholder-shown) + label,
+    .form-group select:focus + label,
+    .form-group select:not(:placeholder-shown) + label {
+      top:-8px; left:12px; font-size:12px; color:#6c63ff; background:#fff; padding:0 6px;
+    }
+
+    input, textarea, select {
+      width:100%; padding:14px 16px; border:1.5px solid #ddd; border-radius:12px;
+      font-size:15px; transition:border-color 0.2s;
+    }
+    input:focus, textarea:focus, select:focus {
+      outline:none; border-color:#6c63ff; box-shadow:0 0 0 3px rgba(108,99,255,0.15);
+    }
+    textarea { min-height:90px; resize:vertical; }
+
+    .image-preview-wrapper {
+      border:2px dashed #ccc; border-radius:12px; padding:20px;
+      text-align:center; cursor:pointer; margin-bottom:24px;
+      transition:border-color 0.2s;
+    }
+    .image-preview-wrapper:hover { border-color:#6c63ff; }
+    .image-preview-wrapper img {
+      max-width:100%; max-height:260px; border-radius:8px; display:none;
+    }
+    .image-preview-wrapper.has-image { border-style:solid; border-color:#6c63ff; }
+
+    .error-msg { color:#ff4757; font-size:13px; margin-top:6px; min-height:18px; text-align:center; }
+
+    .btn {
+      width:100%; padding:14px; background:#6c63ff; color:white;
+      border:none; border-radius:12px; font-size:15px; font-weight:500;
+      cursor:pointer; transition:all 0.2s;
+    }
+    .btn:hover { background:#5a52e0; }
+    .btn:disabled { background:#aaa; cursor:not-allowed; }
+
+    #progressContainer { display:none; margin:20px 0; }
+    #progressBarContainer { background:#e0e0e0; border-radius:8px; height:8px; overflow:hidden; }
+    #progressBar { width:0%; height:100%; background:#6c63ff; transition:width 0.2s ease; }
+    #progressText { text-align:center; margin-top:8px; font-size:14px; color:#555; }
+
+    .bottom-nav {
+      position:fixed; bottom:0; left:0; width:100%; height:68px; background:#fff;
+      display:flex; justify-content:space-around; align-items:center;
+      box-shadow:0 -3px 12px rgba(0,0,0,0.09); z-index:100;
+    }
+    .nav-item { flex:1; text-align:center; font-size:11px; color:#666; cursor:pointer; }
+    .nav-item.active { color:#6c63ff; font-weight:600; }
+    .nav-item .material-symbols-outlined { font-size:26px; margin-bottom:4px; display:block; }
+    .nav-item.active .material-symbols-outlined { color:#6c63ff; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="logo"></div>
+    <h1>ArtKart</h1>
+  </header>
+
+  <div class="container">
+    <div class="card">
+      <h2>Upload New Artwork</h2>
+
+      <form id="uploadForm">
+
+        <!-- Image Upload + Preview -->
+        <div class="form-group">
+          <div class="image-preview-wrapper" id="imagePreviewWrapper">
+            <img id="imagePreview" alt="Artwork Preview">
+            <div id="imagePlaceholder">
+              <span class="material-symbols-outlined" style="font-size:48px; color:#aaa;">add_photo_alternate</span>
+              <p style="margin-top:12px; color:#777;">Tap to select artwork image</p>
+            </div>
+          </div>
+          <input type="file" id="image" accept="image/*" required hidden>
+          <div class="error-msg" id="imageError"></div>
+        </div>
+
+        <!-- Title -->
+        <div class="form-group">
+          <input type="text" id="title" placeholder=" " required>
+          <label for="title">Artwork Title *</label>
+        </div>
+
+        <!-- Description -->
+        <div class="form-group">
+          <textarea id="description" placeholder=" "></textarea>
+          <label for="description">Description (optional)</label>
+        </div>
+
+        <!-- Price -->
+        <div class="form-group">
+          <input type="number" id="price" placeholder=" " min="1" step="1" required>
+          <label for="price">Price (₹) *</label>
+        </div>
+
+        <!-- Category -->
+        <div class="form-group">
+          <select id="category">
+            <option value="">Select Category (optional)</option>
+            <option value="Painting">Painting</option>
+            <option value="Digital Art">Digital Art</option>
+            <option value="Sketch">Sketch</option>
+            <option value="Photography">Photography</option>
+            <option value="Sculpture">Sculpture</option>
+            <option value="Abstract">Abstract</option>
+            <option value="Poster">Poster</option>
+            <option value="3D">3D</option>
+          </select>
+          <label for="category">Category</label>
+        </div>
+
+        <!-- Progress Bar -->
+        <div id="progressContainer">
+          <div id="progressBarContainer">
+            <div id="progressBar"></div>
+          </div>
+          <div id="progressText">Uploading... 0%</div>
+        </div>
+
+        <button type="submit" class="btn" id="submitBtn">Upload Artwork</button>
+        <div class="error-msg" id="formError"></div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Bottom Navigation -->
+  <nav class="bottom-nav">
+    <div class="nav-item" data-page="home">
+      <span class="material-symbols-outlined">home</span> Home
+    </div>
+    <div class="nav-item" data-page="explore">
+      <span class="material-symbols-outlined">explore</span> Explore
+    </div>
+    <div class="nav-item active" data-page="profile">
+      <span class="material-symbols-outlined">person</span> Profile
+    </div>
+  </nav>
+
+  <!-- Firebase Compat -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+  <script src="upload.js"></script>
+</body>
+</html>

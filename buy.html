@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Buy Artwork | ArtKart</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
+  font-family:'Poppins',sans-serif;
+}
+
+body{
+  background:#f5f6fa;
+  padding:20px;
+}
+
+.container{
+  max-width:520px;
+  margin:auto;
+  background:#fff;
+  padding:20px;
+  border-radius:16px;
+  box-shadow:0 10px 30px rgba(0,0,0,.08);
+}
+
+.art-img{
+  width:100%;
+  height:280px;
+  object-fit:cover;
+  border-radius:14px;
+  margin-bottom:15px;
+  background:#eee;
+}
+
+h2{
+  font-size:20px;
+  margin-bottom:6px;
+}
+
+.price{
+  font-weight:600;
+  color:#6c63ff;
+  margin-bottom:4px;
+}
+
+.artist{
+  font-size:14px;
+  color:#555;
+  margin-bottom:18px;
+}
+
+input{
+  width:100%;
+  padding:12px;
+  margin-top:12px;
+  border-radius:10px;
+  border:1px solid #ddd;
+  font-size:14px;
+}
+
+input:focus{
+  outline:none;
+  border-color:#6c63ff;
+}
+
+button{
+  width:100%;
+  padding:14px;
+  margin-top:18px;
+  background:#6c63ff;
+  color:#fff;
+  border:none;
+  border-radius:12px;
+  font-size:15px;
+  font-weight:500;
+  cursor:pointer;
+  transition:0.2s;
+}
+
+button:hover{
+  background:#574fd6;
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <img id="artImg" class="art-img" src="" alt="Artwork">
+
+  <h2 id="artName">Loading...</h2>
+  <p class="price" id="artPrice"></p>
+  <p class="artist" id="artArtist"></p>
+
+  <input id="buyerName" placeholder="Your Full Name">
+  <input id="buyerCity" placeholder="Your City">
+
+  <button id="continueBtn">Continue</button>
+
+</div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+<script>
+/* SAME CONFIG AS ARTWORK PAGE */
+const firebaseConfig = {
+  apiKey: "AIzaSyCZ-QeZrs6qJlDk4ZMs9LP2iQ4wjJ2vcF8",
+  authDomain: "artkart-69692.firebaseapp.com",
+  projectId: "artkart-69692",
+  storageBucket: "artkart-69692.appspot.com",
+  messagingSenderId: "1067935304156",
+  appId: "1:1067935304156:web:d8c50769ecb9797f8d6719"
+};
+
+if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+/* GET ART ID */
+const params = new URLSearchParams(window.location.search);
+const artId = params.get("id");
+
+if(!artId){
+  alert("Invalid artwork link");
+  throw new Error("No artwork ID");
+}
+
+/* LOAD ARTWORK FROM FIRESTORE */
+async function loadArtwork(){
+  try{
+    const doc = await db.collection("arts").doc(artId).get();
+
+    if(!doc.exists){
+      alert("Artwork not found");
+      return;
+    }
+
+    const data = doc.data();
+
+    document.getElementById("artImg").src =
+      data.imageUrl || "https://via.placeholder.com/500x300";
+
+    document.getElementById("artName").innerText =
+      data.title || "Untitled";
+
+    document.getElementById("artPrice").innerText =
+      "Price: ₹" + (data.price || 0).toLocaleString();
+
+    document.getElementById("artArtist").innerText =
+      "Artist: " + (data.artistName || "Unknown");
+
+  }catch(error){
+    console.error(error);
+    alert("Error loading artwork");
+  }
+}
+
+loadArtwork();
+
+/* CONTINUE BUTTON */
+document.getElementById("continueBtn").onclick = () => {
+
+  const buyerName = document.getElementById("buyerName").value.trim();
+  const buyerCity = document.getElementById("buyerCity").value.trim();
+
+  if(!buyerName || !buyerCity){
+    alert("Please fill all details");
+    return;
+  }
+
+  window.location.href =
+    `order.html?id=${artId}&buyer=${encodeURIComponent(buyerName)}&city=${encodeURIComponent(buyerCity)}`;
+};
+</script>
+
+</body>
+</html>

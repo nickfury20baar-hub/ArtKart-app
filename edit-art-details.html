@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Edit Art Details • ArtKart</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet">
+
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:Poppins}
+body{background:#f5f6fa;color:#222}
+
+/* HEADER */
+header{
+  background:#fff;
+  padding:14px 16px;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  box-shadow:0 2px 10px rgba(0,0,0,.08);
+  position:sticky;top:0;z-index:10
+}
+header h1{font-size:18px;font-weight:600}
+.back{cursor:pointer}
+
+/* CONTAINER */
+.container{
+  max-width:720px;
+  margin:auto;
+  padding:20px
+}
+
+.card{
+  background:#fff;
+  border-radius:18px;
+  padding:20px;
+  box-shadow:0 6px 20px rgba(0,0,0,.08)
+}
+
+label{
+  display:block;
+  font-size:13px;
+  font-weight:500;
+  margin-top:18px;
+  color:#444
+}
+
+input, textarea{
+  width:100%;
+  margin-top:8px;
+  padding:14px;
+  border-radius:14px;
+  border:1px solid #ddd;
+  font-size:14px;
+  outline:none
+}
+
+input:focus, textarea:focus{
+  border-color:#6c63ff
+}
+
+textarea{
+  min-height:120px;
+  resize:vertical
+}
+
+button{
+  width:100%;
+  margin-top:26px;
+  padding:14px;
+  border:none;
+  border-radius:16px;
+  background:#6c63ff;
+  color:#fff;
+  font-size:15px;
+  font-weight:600;
+  cursor:pointer
+}
+
+button:disabled{
+  background:#aaa;
+  cursor:not-allowed
+}
+
+.loading{
+  text-align:center;
+  padding:100px 20px;
+  color:#777
+}
+
+.note{
+  font-size:12px;
+  color:#777;
+  margin-top:6px
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <span class="material-symbols-outlined back" onclick="history.back()">arrow_back</span>
+  <h1>Edit Art Details</h1>
+</header>
+
+<div class="container">
+
+  <div id="loading" class="loading">Loading art details…</div>
+
+  <div id="form" class="card" style="display:none">
+
+    <label>Artwork Title</label>
+    <input type="text" id="title" placeholder="Enter artwork title">
+
+    <label>Description</label>
+    <textarea id="description" placeholder="Describe your artwork"></textarea>
+
+    <label>Price (₹)</label>
+    <input type="number" id="price" placeholder="Enter price">
+
+    <div class="note">Price can be updated anytime.</div>
+
+    <button id="saveBtn">Save Changes</button>
+  </div>
+
+</div>
+
+<!-- FIREBASE -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+<script>
+/* ===============================
+   FIREBASE INIT
+================================ */
+// 🔴 agar already common file me init hai to yahan remove kar dena
+const firebaseConfig = {
+  apiKey: "AIzaSyCZ-QeZrs6qJlDk4ZMs9LP2iQ4wjJ2vcF8",
+      authDomain: "artkart-69692.firebaseapp.com",
+      projectId: "artkart-69692"
+};
+
+firebase.initializeApp(firebaseConfig);
+
+const auth = firebase.auth();
+const db   = firebase.firestore();
+
+/* ===============================
+   GET ART ID
+================================ */
+const params = new URLSearchParams(window.location.search);
+const artId = params.get("id");
+
+if (!artId) {
+  document.getElementById("loading").innerText = "Invalid artwork ID";
+  throw new Error("artId missing");
+}
+
+/* ===============================
+   AUTH CHECK
+================================ */
+auth.onAuthStateChanged(async user => {
+
+  if (!user) {
+    document.getElementById("loading").innerHTML =
+      "Please login to edit artwork.";
+    return;
+  }
+
+  const artRef = db.collection("arts").doc(artId);
+
+  try {
+    const snap = await artRef.get();
+
+    if (!snap.exists) {
+      document.getElementById("loading").innerText =
+        "Artwork not found";
+      return;
+    }
+
+    const art = snap.data();
+
+    /* 🔐 OWNER CHECK */
+    if (art.artistId !== user.uid) {
+      document.getElementById("loading").innerText =
+        "You are not allowed to edit this artwork.";
+      return;
+    }
+
+    /* FILL FORM */
+    document.getElementById("title").value = art.title || "";
+    document.getElementById("description").value = art.description || "";
+    document.getElementById("price").value = art.price || "";
+
+    document.getElementById("loading").style.display = "none";
+    document.getElementById("form").style.display = "block";
+
+    /* SAVE */
+    document.getElementById("saveBtn").onclick = async () => {
+      const title = document.getElementById("title").value.trim();
+      const desc  = document.getElementById("description").value.trim();
+      const price = Number(document.getElementById("price").value);
+
+      if (!title || !desc || price < 0) {
+        alert("Please fill all fields correctly");
+        return;
+      }
+
+      const btn = document.getElementById("saveBtn");
+      btn.disabled = true;
+      btn.innerText = "Saving...";
+
+      await artRef.update({
+        title: title,
+        description: desc,
+        price: price,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+      alert("✅ Art details updated successfully");
+      history.back();
+    };
+
+  } catch (e) {
+    document.getElementById("loading").innerText =
+      "Error loading artwork";
+    console.error(e);
+  }
+});
+</script>
+
+</body>
+</html>

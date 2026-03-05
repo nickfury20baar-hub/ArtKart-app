@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ArtKart — Seller Dashboard</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+  <!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-WM217K82H4"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-WM217K82H4');
+</script>
+
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; font-family:'Poppins',sans-serif; }
+    body { background:#f5f6fa; min-height:100vh; color:#222; padding-bottom:90px; }
+
+    header {
+      background:#ffffff; padding:14px 16px; display:flex; align-items:center; gap:12px;
+      box-shadow:0 2px 10px rgba(0,0,0,0.06); position:sticky; top:0; z-index:100;
+    }
+    .logo { width:38px; height:38px; border-radius:10px; background:linear-gradient(135deg,#6c63ff,#9f9cff); }
+    header h1 { font-size:21px; font-weight:600; color:#2d2d2d; flex:1; }
+
+    .header-actions { display:flex; align-items:center; gap:16px; }
+    .action-icon {
+      font-size:28px; color:#666; cursor:pointer; transition:color 0.2s;
+    }
+    .action-icon:hover { color:#6c63ff; }
+
+    .menu-popup {
+      display:none; position:absolute; top:50px; right:16px; background:#fff;
+      border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,0.15); min-width:180px; z-index:200;
+    }
+    .menu-item {
+      padding:12px 20px; font-size:14px; cursor:pointer; display:flex; align-items:center; gap:12px;
+      border-bottom:1px solid #f0f0f0;
+    }
+    .menu-item:last-child { border-bottom:none; }
+    .menu-item:hover { background:#f8f9ff; }
+
+    .profile-hero {
+      text-align:center; padding:28px 16px 20px; background:#fff; margin:16px;
+      border-radius:16px; box-shadow:0 6px 20px rgba(0,0,0,0.07);
+    }
+    .pic-container { position:relative; display:inline-block; }
+    #sellerPhoto { width:110px; height:110px; border-radius:50%; object-fit:cover; border:4px solid #6c63ff; }
+    .edit-badge {
+      position:absolute; bottom:4px; right:4px; background:#6c63ff; color:white;
+      border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center;
+      border:3px solid #fff; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,0.2);
+    }
+
+    .name-row { display:flex; align-items:center; justify-content:center; gap:10px; margin:16px 0; }
+    #sellerName { font-size:22px; font-weight:600; color:#222; }
+    .edit-icon { color:#888; cursor:pointer; font-size:20px; transition:color 0.2s; }
+    .edit-icon:hover { color:#6c63ff; }
+
+    .art-section { padding:0 16px 40px; }
+    .section-title { font-size:18px; font-weight:600; margin:20px 0 16px; color:#333; }
+
+    .art-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(160px, 1fr)); gap:14px; }
+    .art-card {
+      background:#fff; border-radius:14px; overflow:hidden; box-shadow:0 4px 16px rgba(0,0,0,0.08);
+      transition:transform 0.18s ease;
+    }
+    .art-card:hover { transform:translateY(-4px); }
+    .art-img { width:100%; aspect-ratio:1/1.1; object-fit:cover; background:#e8e8e8; }
+    .art-info { padding:12px; display:flex; justify-content:space-between; align-items:center; }
+    .art-title { font-size:14px; font-weight:500; margin-bottom:4px; }
+    .art-price { font-size:13px; color:#6c63ff; font-weight:500; }
+    .card-menu-btn { cursor:pointer; color:#888; font-size:22px; }
+
+    .card-menu-popup {
+      display:none; position:absolute; bottom:70px; right:10px; background:#fff;
+      border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,0.15); min-width:160px; z-index:10;
+    }
+    .card-menu-item { padding:10px 16px; font-size:13px; cursor:pointer; display:flex; align-items:center; gap:10px; }
+    .card-menu-item:hover { background:#f8f9ff; }
+    .delete-item { color:#ff4757; }
+
+    .modal {
+      display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5);
+      justify-content:center; align-items:center; z-index:1000;
+    }
+    .modal-content {
+      background:#fff; padding:24px; border-radius:16px; width:90%; max-width:420px;
+      box-shadow:0 10px 30px rgba(0,0,0,0.2);
+    }
+    .modal-header { font-size:18px; font-weight:600; margin-bottom:20px; text-align:center; }
+    .stat-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:16px; }
+    .stat-item { background:#f0f1ff; padding:16px; border-radius:12px; text-align:center; }
+    .stat-number { font-size:24px; font-weight:700; color:#6c63ff; }
+    .stat-label { font-size:13px; color:#666; }
+    .close-btn { width:100%; margin-top:24px; padding:12px; background:#6c63ff; color:white; border:none; border-radius:12px; font-size:15px; cursor:pointer; }
+
+    .bottom-nav {
+      position:fixed; bottom:0; left:0; width:100%; height:68px; background:#fff;
+      display:flex; justify-content:space-around; align-items:center;
+      box-shadow:0 -3px 12px rgba(0,0,0,0.09); z-index:100;
+    }
+    .nav-item { flex:1; text-align:center; font-size:11px; color:#666; cursor:pointer; }
+    .nav-item.active { color:#6c63ff; font-weight:600; }
+    .nav-item .material-symbols-outlined { font-size:26px; margin-bottom:4px; display:block; }
+    .nav-item.active .material-symbols-outlined { color:#6c63ff; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="logo"></div>
+    <h1>ArtKart</h1>
+    <div class="header-actions">
+      <span class="material-symbols-outlined action-icon" onclick="location.href='upload.html'" title="Upload Artwork">add_circle</span>
+      <span class="material-symbols-outlined action-icon" onclick="toggleMenu('headerMenu')">more_vert</span>
+    </div>
+
+    <div class="menu-popup" id="headerMenu">
+      <div class="menu-item" onclick="alert('Feedback feature coming soon!')"><span class="material-symbols-outlined">feedback</span> Send Feedback</div>
+      <div class="menu-item" onclick="copyProfileLink()"><span class="material-symbols-outlined">share</span> Share Profile</div>
+    </div>
+  </header>
+
+  <section class="profile-hero">
+    <div class="pic-container">
+      <img id="sellerPhoto" src="https://via.placeholder.com/110" alt="Seller">
+      <label for="fileInput" class="edit-badge">
+        <span class="material-symbols-outlined" style="font-size:20px;">edit</span>
+      </label>
+      <input type="file" id="fileInput" accept="image/*" hidden>
+    </div>
+
+    <div class="name-row">
+      <h2 id="sellerName">Seller Name</h2>
+      <span class="material-symbols-outlined edit-icon" onclick="editSellerName()">edit</span>
+    </div>
+  </section>
+
+  <section class="art-section">
+    <h3 class="section-title">My Artworks</h3>
+    <div class="art-grid" id="artList"></div>
+  </section>
+
+  <!-- Analytics Modal -->
+  <div class="modal" id="statsModal">
+    <div class="modal-content">
+      <div class="modal-header" id="statTitle">Artwork Analytics</div>
+      <div class="stat-grid">
+        <div class="stat-item"><div class="stat-number" id="vCount">0</div><div class="stat-label">Views</div></div>
+        <div class="stat-item"><div class="stat-number" id="lCount">0</div><div class="stat-label">Likes</div></div>
+        <div class="stat-item"><div class="stat-number" id="sCount">0</div><div class="stat-label">Shares</div></div>
+        <div class="stat-item"><div class="stat-number" id="cCount">0</div><div class="stat-label">Comments</div></div>
+      </div>
+      <button class="close-btn" onclick="closeModal()">Close</button>
+    </div>
+  </div>
+
+  <!-- Bottom Navigation -->
+  <nav class="bottom-nav">
+    <div class="nav-item" data-page="home">
+      <span class="material-symbols-outlined">home</span> Home
+    </div>
+    <div class="nav-item" data-page="explore">
+      <span class="material-symbols-outlined">explore</span> Explore
+    </div>
+    <div class="nav-item active" data-page="profile">
+      <span class="material-symbols-outlined">person</span> Profile
+    </div>
+  </nav>
+
+  <!-- Firebase Compat -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyCZ-QeZrs6qJlDk4ZMs9LP2iQ4wjJ2vcF8",
+  authDomain: "artkart-69692.firebaseapp.com",
+  projectId: "artkart-69692",
+  storageBucket: "artkart-69692.appspot.com",
+  messagingSenderId: "1067935304156",
+  appId: "1:1067935304156:web:d8c50769ecb9797f8d6719"
+};
+
+firebase.initializeApp(firebaseConfig);
+
+const auth = firebase.auth();
+const db = firebase.firestore();
+const storage = firebase.storage();
+
+let sellerUid = null;
+
+auth.onAuthStateChanged(async user => {
+  if (!user) {
+    location.href = "login.html";
+    return;
+  }
+  sellerUid = user.uid; // default to current user
+
+  // Load seller profile
+  try {
+    const userDoc = await db.collection("users").doc(sellerUid).get();
+
+    if (userDoc.exists) {
+      const data = userDoc.data();
+      document.getElementById("sellerName").textContent = data.name || data.displayName || "Seller";
+      if (data.photoURL) {
+        document.getElementById("sellerPhoto").src = data.photoURL;
+      }
+    }
+  } catch (err) {
+    console.error("Failed to load seller profile: " + err.message);
+  }
+
+  // Load artworks
+  loadSellerArtworks();
+});
+
+async function loadSellerArtworks() {
+  if (!sellerUid) return;
+
+  try {
+    const snap = await db.collection("arts")
+      .where("artistId", "==", sellerUid)
+      .orderBy("createdAt", "desc")
+      .get();
+
+    const container = document.getElementById("artList");
+    container.innerHTML = "";
+
+    if (snap.empty) {
+      container.innerHTML = '<p style="text-align:center; color:#777; padding:40px;">No artworks uploaded yet.</p>';
+      return;
+    }
+
+    snap.forEach(doc => {
+      const art = doc.data();
+
+      const artHtml = `
+        <div class="art-card" onclick="openArtwork('${doc.id}')">
+          <img src="${art.imageUrl}" class="art-img">
+          <div class="art-info">
+            <div>
+              <div class="art-title">${art.title || "Untitled"}</div>
+              <div class="art-price">₹${(art.price || 0).toLocaleString()}</div>
+            </div>
+            <span class="material-symbols-outlined card-menu-btn"
+              onclick="event.stopPropagation(); toggleMenu('menu-${doc.id}')">more_vert</span>
+          </div>
+
+          <div class="card-menu-popup" id="menu-${doc.id}">
+            <div class="card-menu-item" onclick="editArt('${doc.id}')">
+              <span class="material-symbols-outlined">edit</span> Edit
+            </div>
+            <div class="card-menu-item" onclick="openAnalytics('${doc.id}')">
+              <span class="material-symbols-outlined">bar_chart</span> Analytics
+            </div>
+            <div class="card-menu-item" onclick="shareArtwork('${doc.id}')">
+              <span class="material-symbols-outlined">share</span> Share
+            </div>
+            <div class="card-menu-item" onclick="deleteArtwork('${doc.id}')">
+              <span class="material-symbols-outlined">delete</span> Delete
+            
+            </div>
+          </div>
+        </div>
+      `;
+
+      container.insertAdjacentHTML("beforeend", artHtml);
+    });
+  } catch (err) {
+    console.error("Error fetching artworks: " + err.message);
+  }
+}
+
+// Open artwork page
+
+
+// Edit artwork
+function editArt(id) {
+  window.location.href = `edit-art-details.html?id=${id}`;
+}
+
+// Open analytics
+function openAnalytics(id) {
+  window.location.href = `analytics.html?id=${id}`;
+}
+
+// Share artwork
+window.shareArtwork = function (id) {
+  const shareUrl = `${location.origin}/artwork.html?id=${id}`;
+
+  if (navigator.share) {
+    navigator.share({
+      title: "Artwork on ArtKart",
+      text: "Check out this artwork 🎨",
+      url: shareUrl
+    }).catch(() => {});
+  } else {
+    navigator.clipboard.writeText(shareUrl);
+  }
+};
+
+async function deleteArtwork(id, imageUrl) {
+      if (!confirm("Delete this artwork permanently?")) return;
+
+      try {
+        await db.collection("arts").doc(id).delete();
+
+        // Optional: If you stored public_id from Cloudinary during upload, delete it here
+        // For now skipped — add if needed
+        // Example: await fetch(`https://api.cloudinary.com/v1_1/dmtzk2dsw/resources/image/upload/${publicId}`, { method: 'DELETE', ... })
+
+        alert("Artwork deleted!");
+        loadSellerArtworks();
+      } catch (err) {
+        alert("Failed to delete: " + err.message);
+      }
+    }
+
+// Toggle menu
+function toggleMenu(id) {
+  const menu = document.getElementById(id);
+  const isOpen = menu.style.display === "block";
+  document.querySelectorAll('.menu-popup, .card-menu-popup').forEach(m => m.style.display = "none");
+  menu.style.display = isOpen ? "none" : "block";
+}
+
+// Edit seller name
+async function editSellerName() {
+  const current = document.getElementById("sellerName").textContent;
+  const newName = prompt("Enter new seller name:", current);
+  if (newName && newName.trim() !== current) {
+    try {
+      await db.collection("users").doc(sellerUid).update({ name: newName.trim() });
+      document.getElementById("sellerName").textContent = newName.trim();
+    } catch (err) {
+      console.error("Failed to update name: " + err.message);
+    }
+  }
+}
+
+// Bottom nav
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    const page = item.getAttribute('data-page');
+    if (page === 'home') location.href = 'home.html';
+    if (page === 'profile') location.href = 'profile.html';
+    if (page === 'explore') location.href = 'explore.html';
+  });
+});
+
+// Close menus on outside click
+document.addEventListener('click', e => {
+  if (!e.target.closest('.menu-icon, .card-menu-btn, .action-icon')) {
+    document.querySelectorAll('.menu-popup, .card-menu-popup').forEach(m => m.style.display = "none");
+  }
+});
+</script>
+
+</body>
+</html>
