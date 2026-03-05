@@ -4,57 +4,15 @@
 <meta charset="UTF-8">
 <title>ArtKart Admin</title>
 <style>
-body{
-  margin:0;
-  font-family:Arial,sans-serif;
-  background:#121212;
-  color:white;
-  display:flex;
-}
-.sidebar{
-  width:220px;
-  background:#1e1e1e;
-  height:100vh;
-  padding:20px;
-}
-.sidebar ul{
-  list-style:none;
-  padding:0;
-}
-.sidebar li{
-  padding:12px;
-  cursor:pointer;
-  border-radius:6px;
-  margin-bottom:8px;
-  background:#2a2a2a;
-}
-.sidebar li:hover{
-  background:#444;
-}
-.main{
-  flex:1;
-  padding:25px;
-  overflow-y:auto;
-  height:100vh;
-}
-.card{
-  background:#1f1f1f;
-  padding:15px;
-  border-radius:10px;
-  margin-bottom:15px;
-}
-.art-img{
-  width:150px;
-  border-radius:8px;
-}
-.delete{
-  background:red;
-  border:none;
-  padding:8px 12px;
-  color:white;
-  border-radius:6px;
-  cursor:pointer;
-}
+body{margin:0;font-family:Arial,sans-serif;background:#121212;color:white;display:flex}
+.sidebar{width:220px;background:#1e1e1e;height:100vh;padding:20px}
+.sidebar ul{list-style:none;padding:0}
+.sidebar li{padding:12px;cursor:pointer;border-radius:6px;margin-bottom:8px;background:#2a2a2a}
+.sidebar li:hover{background:#444}
+.main{flex:1;padding:25px;overflow-y:auto;height:100vh}
+.card{background:#1f1f1f;padding:15px;border-radius:10px;margin-bottom:15px}
+.art-img{width:150px;border-radius:8px}
+.delete{background:red;border:none;padding:8px 12px;color:white;border-radius:6px;cursor:pointer}
 </style>
 </head>
 <body>
@@ -72,30 +30,31 @@ body{
 <div id="content"></div>
 </div>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, collection, getDocs, deleteDoc, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+<!-- Firebase Compat SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
-// 🔹 Firebase config
+<script>
+// Firebase Config
 const firebaseConfig = {
   apiKey: "AIzaSyCZ-QeZrs6qJlDk4ZMs9LP2iQ4wjJ2vcF8",
   authDomain: "artkart-69692.firebaseapp.com",
   projectId: "artkart-69692"
 };
+firebase.initializeApp(firebaseConfig);
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+const auth = firebase.auth();
+const db = firebase.firestore();
 
-// 🔹 Admin access based on role
-onAuthStateChanged(auth, async (user) => {
-  if (!user) {
+// Admin check based on role field in users collection
+auth.onAuthStateChanged(async user => {
+  if(!user){
     window.location.href = "/";
     return;
   }
-  const userDoc = await getDoc(doc(db, "users", user.uid));
-  if (!userDoc.exists() || userDoc.data().role !== "admin") {
+  const userDoc = await db.collection("users").doc(user.uid).get();
+  if(!userDoc.exists || userDoc.data().role !== "admin"){
     alert("Access denied. Only admins allowed.");
     window.location.href = "/";
     return;
@@ -103,24 +62,26 @@ onAuthStateChanged(auth, async (user) => {
   loadDashboard();
 });
 
-// 🔹 Load Dashboard
-window.loadDashboard = async function() {
-  const snapshot = await getDocs(collection(db, "artworks"));
-  const usersSnap = await getDocs(collection(db, "users"));
-  document.getElementById("content").innerHTML = `
-    <h1>Dashboard</h1>
-    <div class="card">Total Artworks: ${snapshot.size}</div>
-    <div class="card">Total Users: ${usersSnap.size}</div>
-  `;
-};
+// Load Dashboard
+function loadDashboard(){
+  db.collection("artworks").get().then(snapshot=>{
+    db.collection("users").get().then(uSnap=>{
+      document.getElementById("content").innerHTML = `
+        <h1>Dashboard</h1>
+        <div class="card">Total Artworks: ${snapshot.size}</div>
+        <div class="card">Total Users: ${uSnap.size}</div>
+      `;
+    });
+  });
+}
 
-// 🔹 Load Artworks
-window.loadArtworks = async function() {
-  const snapshot = await getDocs(collection(db, "artworks"));
-  let html = "<h1>Artworks</h1>";
-  snapshot.forEach(docSnap => {
-    const art = docSnap.data();
-    html += `
+// Load Artworks
+function loadArtworks(){
+  db.collection("artworks").get().then(snapshot=>{
+    let html = "<h1>Artworks</h1>";
+    snapshot.forEach(docSnap=>{
+      const art = docSnap.data();
+      html += `
       <div class="card">
         <img src="${art.imageURL || 'https://via.placeholder.com/150'}" class="art-img"><br>
         <b>${art.title || "Untitled"}</b><br>
@@ -129,35 +90,35 @@ window.loadArtworks = async function() {
         Email: ${art.email || "—"}<br><br>
         <button class="delete" onclick="deleteArt('${docSnap.id}')">Delete</button>
       </div>
-    `;
+      `;
+    });
+    document.getElementById("content").innerHTML = html;
   });
-  document.getElementById("content").innerHTML = html;
-};
+}
 
-// 🔹 Delete Artwork
-window.deleteArt = async function(id) {
-  const confirmDelete = confirm("Are you sure you want to delete this artwork?");
-  if (!confirmDelete) return;
-  await deleteDoc(doc(db, "artworks", id));
-  loadArtworks();
-};
+// Delete Artwork
+function deleteArt(id){
+  if(!confirm("Are you sure you want to delete this artwork?")) return;
+  db.collection("artworks").doc(id).delete().then(()=>loadArtworks());
+}
 
-// 🔹 Load Users
-window.loadUsers = async function() {
-  const snapshot = await getDocs(collection(db, "users"));
-  let html = "<h1>Users</h1>";
-  snapshot.forEach(userSnap => {
-    const data = userSnap.data();
-    html += `
+// Load Users
+function loadUsers(){
+  db.collection("users").get().then(snapshot=>{
+    let html = "<h1>Users</h1>";
+    snapshot.forEach(docSnap=>{
+      const data = docSnap.data();
+      html += `
       <div class="card">
-        ${data.name || "—"} <br>
-        ${data.email || "—"} <br>
+        ${data.name || "—"}<br>
+        ${data.email || "—"}<br>
         Role: ${data.role || "user"}
       </div>
-    `;
+      `;
+    });
+    document.getElementById("content").innerHTML = html;
   });
-  document.getElementById("content").innerHTML = html;
-};
+}
 </script>
 
 </body>
