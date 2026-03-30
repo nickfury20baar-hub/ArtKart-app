@@ -1,6 +1,9 @@
 export default async function handler(req, res) {
   try {
-    const { query } = req.body;
+    const body =
+      typeof req.body === "string" ? JSON.parse(req.body) : req.body;
+
+    const query = body?.query;
 
     if (!query) {
       return res.status(400).json({ error: "Query missing" });
@@ -15,14 +18,15 @@ export default async function handler(req, res) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          contents: [query],
+          contents: [{
+            parts: [{ text: query }]
+          }],
         }),
       }
     );
 
     const data = await response.json();
 
-    // 🔥 log actual error from Gemini
     if (!data.embeddings) {
       console.log("Gemini Error:", data);
       return res.status(500).json({ error: "Gemini API failed", details: data });
