@@ -2,23 +2,38 @@ export default async function handler(req, res) {
   try {
     const { query } = req.body;
 
-    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-2-preview:embedContent?key=" + process.env.GEMINI_API_KEY, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        contents: [query],
-      }),
-    });
+    if (!query) {
+      return res.status(400).json({ error: "Query missing" });
+    }
+
+    const response = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-2-preview:embedContent?key=" +
+        process.env.GEMINI_API_KEY,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contents: [query],
+        }),
+      }
+    );
 
     const data = await response.json();
+
+    // 🔥 log actual error from Gemini
+    if (!data.embeddings) {
+      console.log("Gemini Error:", data);
+      return res.status(500).json({ error: "Gemini API failed", details: data });
+    }
 
     res.status(200).json({
       embedding: data.embeddings[0].values,
     });
 
   } catch (error) {
-    res.status(500).json({ error: "Something went wrong" });
+    console.log("Server Error:", error);
+    res.status(500).json({ error: error.message });
   }
 }
