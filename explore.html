@@ -95,11 +95,8 @@
     <span class="material-symbols-outlined search-icon" onclick="handleSearch()">
   search
 </span>
-    <input 
-  type="text" 
-  id="searchInput" 
-  placeholder="Search artworks, artists..." 
-  onkeypress="onkeydown='if(event.key === 'Enter') handleSearch()'"/>
+    <input type="text" id="searchInput" placeholder="Search artworks, artists..."/>
+
   </div>
 
   <div class="categories">
@@ -142,150 +139,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
   <script>
-    alert("JS Loaded");
-    const firebaseConfig = {
-      apiKey: "AIzaSyCZ-QeZrs6qJlDk4ZMs9LP2iQ4wjJ2vcF8",
-      authDomain: "artkart-69692.firebaseapp.com",
-      projectId: "artkart-69692",
-      storageBucket: "artkart-69692.appspot.com",
-      messagingSenderId: "1067935304156",
-      appId: "1:1067935304156:web:d8c50769ecb9797f8d6719"
-    };
-
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.firestore();
-
-    // State
-    const PAGE_SIZE = 12;
-    let lastDoc = null;
-    let isLoading = false;
-    let hasMore = true;
-    let currentUserId = null;
-    let searchTerm = "";
-    let selectedCategory = "";
-
-    const grid = document.getElementById("itemsGrid");
-    const loading = document.getElementById("loading");
-    const empty = document.getElementById("emptyState");
-    const sentinel = document.getElementById("sentinel");
-    const searchInput = document.getElementById("searchInput");
-    const chips = document.querySelectorAll(".chip");
-
-    // Auth change → full reset
-    auth.onAuthStateChanged(user => {
-      currentUserId = user ? user.uid : null;
-      console.log("User changed:", currentUserId ? "Logged in" : "Not logged in");
-      resetAndReload();
-    });
-
-    // Search + category
-    searchInput.addEventListener("input", debounce(() => {
-      searchTerm = searchInput.value.trim().toLowerCase();
-      resetAndReload();
-    }, 400));
-
-    chips.forEach(chip => {
-      chip.addEventListener("click", () => {
-        chips.forEach(c => c.classList.remove("active"));
-        chip.classList.add("active");
-        selectedCategory = chip.dataset.category || "";
-        resetAndReload();
-      });
-    });
-
-    function resetAndReload() {
-      grid.innerHTML = "";
-      lastDoc = null;
-      hasMore = true;
-      loading.style.display = "block";
-      empty.style.display = "none";
-      loadMoreArtworks();
-    }
-
-    function debounce(func, wait) {
-      let timeout;
-      return function(...args) {
-        clearTimeout(timeout);
-        timeout = setTimeout(() => func(...args), wait);
-      };
-    }
-
-    // Load artworks
-    async function loadMoreArtworks() {
-      if (isLoading) return;
-      isLoading = true;
-
-      try {
-        let query = db.collection("arts")
-          .orderBy("createdAt", "desc")
-          .limit(PAGE_SIZE);
-
-        if (lastDoc) query = query.startAfter(lastDoc);
-
-        const snap = await query.get();
-
-        loading.style.display = "none";
-
-        if (snap.empty) {
-          hasMore = false;
-          if (grid.children.length === 0) {
-            grid.style.display = "none";
-            empty.style.display = "block";
-          }
-          return;
-        }
-
-        grid.style.display = "grid";
-
-        snap.forEach(doc => {
-          const art = doc.data();
-          const artId = doc.id;
-
-          // Debug log
-          console.log("Artwork:", { id: artId, title: art.title, imageUrl: art.imageUrl });
-
-          // Client-side filter
-          const title = (art.title || "").toLowerCase();
-          const artist = (art.artistName || "").toLowerCase();
-          const cat = (art.category || "").toLowerCase();
-
-          if (searchTerm && !title.includes(searchTerm) && !artist.includes(searchTerm)) return;
-          if (selectedCategory && cat !== selectedCategory.toLowerCase()) return;
-
-          // Like status
-          const isLiked = false; // Placeholder - implement if needed
-
-          const card = document.createElement("a");
-          card.href = `artwork.html?id=${artId}`;
-          card.className = "item-card";
-          card.innerHTML = `
-            <img class="item-img" src="${art.imageUrl || 'https://via.placeholder.com/300?text=Image'}" alt="${art.title || 'Artwork'}">
-            <div class="item-content">
-              <div class="item-title">${art.title || 'Untitled'}</div>
-              <div class="item-artist">by ${art.artistName || 'Unknown'}</div>
-              <div class="item-meta">
-                <span class="item-price">₹${(art.price || 0).toLocaleString()}</span>
-                <button class="like-btn">
-                  <span class="material-symbols-outlined">favorite</span>
-                  <span>${art.likeCount || 0}</span>
-                </button>
-              </div>
-            </div>
-          `;
-
-          grid.appendChild(card);
-        });
-
-        lastDoc = snap.docs[snap.docs.length - 1];
-      } catch (err) {
-        console.error("Load error:", err);
-        loading.innerHTML = "Failed to load artworks.";
-      } finally {
-        isLoading = false;
-      }
-    }
-<script>
+          // 1. Configuration & Init
 const firebaseConfig = {
   apiKey: "AIzaSyCZ-QeZrs6qJlDk4ZMs9LP2iQ4wjJ2vcF8",
   authDomain: "artkart-69692.firebaseapp.com",
@@ -295,135 +149,131 @@ const firebaseConfig = {
   appId: "1:1067935304156:web:d8c50769ecb9797f8d6719"
 };
 
-firebase.initializeApp(firebaseConfig);
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+}
 const db = firebase.firestore();
 
+// 2. State & Elements
+let allArts = [];
 const grid = document.getElementById("itemsGrid");
 const loading = document.getElementById("loading");
+const empty = document.getElementById("emptyState");
 const searchInput = document.getElementById("searchInput");
+const chips = document.querySelectorAll(".chip");
 
-// 🔥 Load all artworks once
-let allArts = [];
-
+// 3. Load Data
 async function loadAllArtworks() {
   loading.style.display = "block";
-  grid.innerHTML = "";
+  empty.style.display = "none";
+  grid.style.display = "none";
 
-  const snap = await db.collection("arts").get();
-  allArts = snap.docs.map(doc => ({
-    id: doc.id,
-    ...doc.data()
-  }));
-
-  loading.style.display = "none";
-  displayArts(allArts);
+  try {
+    const snap = await db.collection("arts").orderBy("createdAt", "desc").get();
+    allArts = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    displayArts(allArts);
+  } catch (err) {
+    console.error("Load error:", err);
+    loading.innerHTML = "Failed to load artworks.";
+  } finally {
+    loading.style.display = "none";
+  }
 }
 
+// 4. Render Logic
 function displayArts(list) {
   grid.innerHTML = "";
-  grid.style.display = "grid";
-
   if (list.length === 0) {
-    grid.innerHTML = "<p>No results found</p>";
+    grid.style.display = "none";
+    empty.style.display = "block";
     return;
   }
+
+  grid.style.display = "grid";
+  empty.style.display = "none";
 
   list.forEach(art => {
     const card = document.createElement("a");
     card.href = `artwork.html?id=${art.id}`;
     card.className = "item-card";
-
     card.innerHTML = `
-      <img class="item-img" src="${art.imageUrl || ''}">
+      <img class="item-img" src="${art.imageUrl || 'https://via.placeholder.com/300'}" alt="${art.title}">
       <div class="item-content">
         <div class="item-title">${art.title || 'Untitled'}</div>
         <div class="item-artist">by ${art.artistName || 'Unknown'}</div>
         <div class="item-meta">
-          <span class="item-price">₹${(art.price || 0)}</span>
+          <span class="item-price">₹${(art.price || 0).toLocaleString()}</span>
+          <div class="like-btn">
+             <span class="material-symbols-outlined">favorite</span>
+             <span style="font-size:12px">${art.likeCount || 0}</span>
+          </div>
         </div>
       </div>
     `;
-
     grid.appendChild(card);
   });
 }
 
-//
-// 🔍 NORMAL SEARCH (typing)
-//
-searchInput.addEventListener("input", () => {
-  const q = searchInput.value.toLowerCase();
-
+// 5. Search & Filter Handlers
+function filterByKeyword(query) {
+  const q = query.toLowerCase();
   const filtered = allArts.filter(a =>
     (a.title || "").toLowerCase().includes(q) ||
-    (a.artistName || "").toLowerCase().includes(q)
+    (a.artistName || "").toLowerCase().includes(q) ||
+    (a.category || "").toLowerCase().includes(q)
   );
-
   displayArts(filtered);
-});
+}
 
-//
-// 🤖 AI SEARCH (Enter / icon)
-//
+// AI / "Deep" Search
 async function handleSearch() {
   const query = searchInput.value.trim();
   if (!query) return;
 
   loading.style.display = "block";
+  loading.innerText = "ArtKart AI is thinking...";
 
   try {
+    // This expects your backend to exist. 
+    // If it doesn't, it will fall back to the catch block's keyword ranking.
     const res = await fetch("/api/embed", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ query })
     });
-
-    const data = await res.json();
-
-    console.log("Embedding:", data.embedding);
-
-    // 🔥 TEMP: Smart keyword ranking (until embeddings stored)
-    const results = allArts
-      .map(art => {
-        let score = 0;
-
-        if ((art.title || "").toLowerCase().includes(query.toLowerCase())) score += 2;
-        if ((art.artistName || "").toLowerCase().includes(query.toLowerCase())) score += 1;
-
-        return { ...art, score };
-      })
-      .sort((a, b) => b.score - a.score);
-
-    displayArts(results);
-
+    
+    if(!res.ok) throw new Error("API not found");
+    // Handle embedding logic here when ready...
+    
   } catch (err) {
-    console.error(err);
-    alert("AI search failed");
+    console.log("Using keyword fallback...");
+    filterByKeyword(query);
+  } finally {
+    loading.style.display = "none";
+    loading.innerText = "Loading artworks...";
   }
-
-  loading.style.display = "none";
 }
 
-//
-// 🔑 ENTER KEY FIX
-//
-searchInput.addEventListener("keydown", function(e) {
-  if (e.key === "Enter") {
-    handleSearch();
-  }
+// 6. Event Listeners
+searchInput.addEventListener("input", (e) => filterByKeyword(e.target.value));
+
+searchInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") handleSearch();
 });
 
-//
-// 🔘 ICON CLICK
-//
-document.querySelector(".search-icon").onclick = handleSearch;
+chips.forEach(chip => {
+  chip.addEventListener("click", () => {
+    chips.forEach(c => c.classList.remove("active"));
+    chip.classList.add("active");
+    const cat = chip.dataset.category;
+    if (!cat) displayArts(allArts);
+    else displayArts(allArts.filter(a => a.category === cat));
+  });
+});
 
-//
-// 🚀 INIT
-//
+// Init
 loadAllArtworks();
+
 </script>
 </body>
 </html>
