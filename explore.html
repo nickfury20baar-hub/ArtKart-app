@@ -92,8 +92,15 @@
   </header>
 
   <div class="search-bar">
-    <span class="material-symbols-outlined search-icon">search</span>
-    <input type="text" id="searchInput" placeholder="Search artworks, artists..." />
+    <span class="material-symbols-outlined search-icon" onclick="handleSearch()">
+  search
+</span>
+    <input 
+  type="text" 
+  id="searchInput" 
+  placeholder="Search artworks, artists..." 
+  onkeypress="if(event.key === 'Enter') handleSearch()" 
+/>
   </div>
 
   <div class="categories">
@@ -305,6 +312,30 @@
         if (page === 'profile') location.href = 'profile.html';
       });
     });
+
+
+
+    /// gemini search ai ////
+    async function handleSearch() {
+  const query = document.getElementById("searchInput").value;
+
+  if (!query) return;
+
+  const res = await fetch("/api/embed", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ query }),
+  });
+
+  const data = await res.json();
+
+  console.log("Embedding:", data.embedding);
+
+  // TEMP test
+  alert("Embedding received: " + data.embedding.length);
+    }
   </script>
 </body>
 </html>
