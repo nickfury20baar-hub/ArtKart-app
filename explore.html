@@ -99,8 +99,7 @@
   type="text" 
   id="searchInput" 
   placeholder="Search artworks, artists..." 
-  onkeypress="if(event.key === 'Enter') handleSearch()" 
-/>
+  onkeypress="onkeydown='if(event.key === 'Enter') handleSearch()'"/>
   </div>
 
   <div class="categories">
@@ -319,7 +318,12 @@
     async function handleSearch() {
   const query = document.getElementById("searchInput").value;
 
-  if (!query) return;
+  if (!query) {
+    alert("Type something");
+    return;
+  }
+
+  alert("AI search triggered: " + query); // 👈 MUST SHOW
 
   const res = await fetch("/api/embed", {
     method: "POST",
@@ -331,11 +335,8 @@
 
   const data = await res.json();
 
-  console.log("Embedding:", data.embedding);
-
-  // TEMP test
-  alert("Embedding received: " + data.embedding.length);
-    }
+  alert("Embedding length: " + data.embedding.length);
+}
   </script>
 </body>
 </html>
