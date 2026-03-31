@@ -1,11 +1,9 @@
 export default async function handler(req, res) {
   try {
-    // ✅ Only allow POST
     if (req.method !== "POST") {
       return res.status(405).json({ error: "Use POST request" });
     }
 
-    // ✅ Safely parse body
     let body = req.body;
 
     if (typeof body === "string") {
@@ -37,7 +35,6 @@ export default async function handler(req, res) {
     const data = await response.json();
 
     if (!data.embeddings) {
-      console.log("Gemini Error:", data);
       return res.status(500).json({ error: "Gemini failed", details: data });
     }
 
@@ -46,7 +43,6 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.log("Server Error:", error);
     return res.status(500).json({ error: error.message });
   }
 }
