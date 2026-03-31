@@ -284,59 +284,145 @@
         isLoading = false;
       }
     }
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyCZ-QeZrs6qJlDk4ZMs9LP2iQ4wjJ2vcF8",
+  authDomain: "artkart-69692.firebaseapp.com",
+  projectId: "artkart-69692",
+  storageBucket: "artkart-69692.appspot.com",
+  messagingSenderId: "1067935304156",
+  appId: "1:1067935304156:web:d8c50769ecb9797f8d6719"
+};
 
-    // Initial load
-    loadMoreArtworks();
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
 
-    // Pull-to-refresh
-    let touchStartY = 0;
-    let pullDistance = 0;
-    const pullThreshold = 120;
+const grid = document.getElementById("itemsGrid");
+const loading = document.getElementById("loading");
+const searchInput = document.getElementById("searchInput");
 
-    window.addEventListener("touchstart", e => {
-      if (window.scrollY === 0) touchStartY = e.touches[0].clientY;
-    }, { passive: true });
+// 🔥 Load all artworks once
+let allArts = [];
 
-    window.addEventListener("touchend", () => {
-      if (pullDistance >= pullThreshold) location.reload();
-      pullDistance = 0;
-      touchStartY = 0;
-    }, { passive: true });
+async function loadAllArtworks() {
+  loading.style.display = "block";
+  grid.innerHTML = "";
 
-    // Bottom nav
-    document.querySelectorAll('.nav-item').forEach(item => {
-      item.addEventListener('click', () => {
-        const page = item.getAttribute('data-page');
-        if (page === 'home') location.href = 'home.html';
-        if (page === 'profile') location.href = 'profile.html';
-      });
-    });
+  const snap = await db.collection("arts").get();
+  allArts = snap.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  }));
 
+  loading.style.display = "none";
+  displayArts(allArts);
+}
 
+function displayArts(list) {
+  grid.innerHTML = "";
+  grid.style.display = "grid";
 
-    /// gemini search ai ////
-    async function handleSearch() {
-  const query = document.getElementById("searchInput").value;
-
-  if (!query) {
-    alert("Type something");
+  if (list.length === 0) {
+    grid.innerHTML = "<p>No results found</p>";
     return;
   }
 
-  alert("AI search triggered: " + query); // 👈 MUST SHOW
+  list.forEach(art => {
+    const card = document.createElement("a");
+    card.href = `artwork.html?id=${art.id}`;
+    card.className = "item-card";
 
-  const res = await fetch("/api/embed", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ query }),
+    card.innerHTML = `
+      <img class="item-img" src="${art.imageUrl || ''}">
+      <div class="item-content">
+        <div class="item-title">${art.title || 'Untitled'}</div>
+        <div class="item-artist">by ${art.artistName || 'Unknown'}</div>
+        <div class="item-meta">
+          <span class="item-price">₹${(art.price || 0)}</span>
+        </div>
+      </div>
+    `;
+
+    grid.appendChild(card);
   });
-
-  const data = await res.json();
-
-  alert("Embedding length: " + data.embedding.length);
 }
-  </script>
+
+//
+// 🔍 NORMAL SEARCH (typing)
+//
+searchInput.addEventListener("input", () => {
+  const q = searchInput.value.toLowerCase();
+
+  const filtered = allArts.filter(a =>
+    (a.title || "").toLowerCase().includes(q) ||
+    (a.artistName || "").toLowerCase().includes(q)
+  );
+
+  displayArts(filtered);
+});
+
+//
+// 🤖 AI SEARCH (Enter / icon)
+//
+async function handleSearch() {
+  const query = searchInput.value.trim();
+  if (!query) return;
+
+  loading.style.display = "block";
+
+  try {
+    const res = await fetch("/api/embed", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ query })
+    });
+
+    const data = await res.json();
+
+    console.log("Embedding:", data.embedding);
+
+    // 🔥 TEMP: Smart keyword ranking (until embeddings stored)
+    const results = allArts
+      .map(art => {
+        let score = 0;
+
+        if ((art.title || "").toLowerCase().includes(query.toLowerCase())) score += 2;
+        if ((art.artistName || "").toLowerCase().includes(query.toLowerCase())) score += 1;
+
+        return { ...art, score };
+      })
+      .sort((a, b) => b.score - a.score);
+
+    displayArts(results);
+
+  } catch (err) {
+    console.error(err);
+    alert("AI search failed");
+  }
+
+  loading.style.display = "none";
+}
+
+//
+// 🔑 ENTER KEY FIX
+//
+searchInput.addEventListener("keydown", function(e) {
+  if (e.key === "Enter") {
+    handleSearch();
+  }
+});
+
+//
+// 🔘 ICON CLICK
+//
+document.querySelector(".search-icon").onclick = handleSearch;
+
+//
+// 🚀 INIT
+//
+loadAllArtworks();
+</script>
 </body>
 </html>
