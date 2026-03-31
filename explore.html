@@ -139,7 +139,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
   <script>
-          // 1. Configuration & Init
+              // 1. Setup
 const firebaseConfig = {
   apiKey: "AIzaSyCZ-QeZrs6qJlDk4ZMs9LP2iQ4wjJ2vcF8",
   authDomain: "artkart-69692.firebaseapp.com",
@@ -149,38 +149,46 @@ const firebaseConfig = {
   appId: "1:1067935304156:web:d8c50769ecb9797f8d6719"
 };
 
+// Prevent double initialization
 if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
 }
 const db = firebase.firestore();
 
-// 2. State & Elements
 let allArts = [];
 const grid = document.getElementById("itemsGrid");
 const loading = document.getElementById("loading");
 const empty = document.getElementById("emptyState");
 const searchInput = document.getElementById("searchInput");
-const chips = document.querySelectorAll(".chip");
 
-// 3. Load Data
+// 2. The Core Loading Function
 async function loadAllArtworks() {
+  console.log("Attempting to fetch from Firestore...");
   loading.style.display = "block";
-  empty.style.display = "none";
-  grid.style.display = "none";
-
+  
   try {
-    const snap = await db.collection("arts").orderBy("createdAt", "desc").get();
+    const snap = await db.collection("arts").get();
+    
+    if (snap.empty) {
+      console.warn("Database is empty! Check your 'arts' collection name.");
+      loading.style.display = "none";
+      empty.style.display = "block";
+      return;
+    }
+
     allArts = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    console.log("Successfully loaded:", allArts.length, "items");
+    
     displayArts(allArts);
   } catch (err) {
-    console.error("Load error:", err);
-    loading.innerHTML = "Failed to load artworks.";
+    console.error("Firestore Error:", err.message);
+    loading.innerHTML = "Error: " + err.message;
   } finally {
     loading.style.display = "none";
   }
 }
 
-// 4. Render Logic
+// 3. Rendering to the Screen
 function displayArts(list) {
   grid.innerHTML = "";
   if (list.length === 0) {
@@ -197,16 +205,12 @@ function displayArts(list) {
     card.href = `artwork.html?id=${art.id}`;
     card.className = "item-card";
     card.innerHTML = `
-      <img class="item-img" src="${art.imageUrl || 'https://via.placeholder.com/300'}" alt="${art.title}">
+      <img class="item-img" src="${art.imageUrl || 'https://via.placeholder.com/300'}" onerror="this.src='https://via.placeholder.com/300'">
       <div class="item-content">
         <div class="item-title">${art.title || 'Untitled'}</div>
         <div class="item-artist">by ${art.artistName || 'Unknown'}</div>
         <div class="item-meta">
-          <span class="item-price">₹${(art.price || 0).toLocaleString()}</span>
-          <div class="like-btn">
-             <span class="material-symbols-outlined">favorite</span>
-             <span style="font-size:12px">${art.likeCount || 0}</span>
-          </div>
+          <span class="item-price">₹${(art.price || 0)}</span>
         </div>
       </div>
     `;
@@ -214,65 +218,19 @@ function displayArts(list) {
   });
 }
 
-// 5. Search & Filter Handlers
-function filterByKeyword(query) {
-  const q = query.toLowerCase();
-  const filtered = allArts.filter(a =>
-    (a.title || "").toLowerCase().includes(q) ||
-    (a.artistName || "").toLowerCase().includes(q) ||
-    (a.category || "").toLowerCase().includes(q)
+// 4. Search Listeners
+searchInput.addEventListener("input", () => {
+  const q = searchInput.value.toLowerCase();
+  const filtered = allArts.filter(a => 
+    (a.title || "").toLowerCase().includes(q) || 
+    (a.artistName || "").toLowerCase().includes(q)
   );
   displayArts(filtered);
-}
-
-// AI / "Deep" Search
-async function handleSearch() {
-  const query = searchInput.value.trim();
-  if (!query) return;
-
-  loading.style.display = "block";
-  loading.innerText = "ArtKart AI is thinking...";
-
-  try {
-    // This expects your backend to exist. 
-    // If it doesn't, it will fall back to the catch block's keyword ranking.
-    const res = await fetch("/api/embed", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query })
-    });
-    
-    if(!res.ok) throw new Error("API not found");
-    // Handle embedding logic here when ready...
-    
-  } catch (err) {
-    console.log("Using keyword fallback...");
-    filterByKeyword(query);
-  } finally {
-    loading.style.display = "none";
-    loading.innerText = "Loading artworks...";
-  }
-}
-
-// 6. Event Listeners
-searchInput.addEventListener("input", (e) => filterByKeyword(e.target.value));
-
-searchInput.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") handleSearch();
 });
 
-chips.forEach(chip => {
-  chip.addEventListener("click", () => {
-    chips.forEach(c => c.classList.remove("active"));
-    chip.classList.add("active");
-    const cat = chip.dataset.category;
-    if (!cat) displayArts(allArts);
-    else displayArts(allArts.filter(a => a.category === cat));
-  });
-});
-
-// Init
+// Run on page load
 loadAllArtworks();
+
 
 </script>
 </body>
