@@ -83,20 +83,56 @@ form.addEventListener("submit", async (e) => {
     const user = auth.currentUser;
     if (!user) throw new Error("You must be signed in to upload.");
 
-    // 3. Save artwork metadata to Firestore
-    await db.collection("arts").add({
-      title,
-      description: description || null,
-      price,
-      category: category || null,
-      imageUrl,
-      artistId: user.uid,
-      artistName: user.displayName || "Anonymous Artist",
-      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      likeCount: 0,
-      views: 0
-    });
+// 🔥 STEP 2: Convert image to base64
+const base64Image = await new Promise(resolve => {
+  const reader = new FileReader();
+  reader.onload = () => {
+    resolve(reader.result.split(",")[1]);
+  };
+  reader.readAsDataURL(file);
+});
 
+// 🔥 STEP 3: Create smart text
+const textData =
+  title + " " +
+  category + " " +
+  description + " artwork painting drawing";
+
+// 🔥 STEP 4: Call your Vercel API
+const res = await fetch("https://art-kart-435c1bnvv-nickfury-s-projects.vercel.app/api/embed", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({
+    query: textData,
+    imageBase64: base64Image,
+    mimeType: file.type
+  })
+});
+
+const data = await res.json();
+
+if (!data.embedding) {
+  throw new Error("Embedding failed");
+}
+
+const embedding = data.embedding;
+
+// 🔥 STEP 5: Save EVERYTHING
+await db.collection("arts").add({
+  title,
+  description: description || null,
+  price,
+  category: category || null,
+  imageUrl,
+  artistId: user.uid,
+  artistName: user.displayName || "Anonymous Artist",
+  createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+  likeCount: 0,
+  views: 0,
+  embedding // 🔥🔥 THIS IS THE MAIN THING
+});
     // Success → show message and redirect to home after short delay
     alert("Artwork uploaded successfully! 🎉\nRedirecting to home...");
 
