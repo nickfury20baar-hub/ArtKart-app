@@ -139,23 +139,19 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
 <script>
-/* ================== 1. FIREBASE SETUP ================== */
+// 🔥 Firebase setup
 const firebaseConfig = {
-  apiKey: "AIzaSyCZ-QeZrs6qJlDk4ZMs9LP2iQ4wjJ2vcF8",
+  apiKey: "YOUR_KEY",
   authDomain: "artkart-69692.firebaseapp.com",
   projectId: "artkart-69692",
-  storageBucket: "artkart-69692.appspot.com",
-  messagingSenderId: "1067935304156",
-  appId: "1:1067935304156:web:d8c50769ecb9797f8d6719"
 };
 
 if (!firebase.apps.length) {
   firebase.initializeApp(firebaseConfig);
 }
-
 const db = firebase.firestore();
 
-/* ================== 2. GLOBAL STATE ================== */
+// 🔥 State
 let allArts = [];
 
 const grid = document.getElementById("itemsGrid");
@@ -163,18 +159,12 @@ const loading = document.getElementById("loading");
 const empty = document.getElementById("emptyState");
 const searchInput = document.getElementById("searchInput");
 
-/* ================== 3. LOAD DATA ================== */
+// 🔥 Load all artworks
 async function loadAllArtworks() {
   loading.style.display = "block";
 
   try {
     const snap = await db.collection("arts").get();
-
-    if (snap.empty) {
-      grid.style.display = "none";
-      empty.style.display = "block";
-      return;
-    }
 
     allArts = snap.docs.map(doc => ({
       id: doc.id,
@@ -184,14 +174,14 @@ async function loadAllArtworks() {
     displayArts(allArts);
 
   } catch (err) {
-    console.error("Firestore error:", err);
+    console.error(err);
     loading.innerHTML = "Error loading data";
   }
 
   loading.style.display = "none";
 }
 
-/* ================== 4. DISPLAY ================== */
+// 🔥 Display function
 function displayArts(list) {
   grid.innerHTML = "";
 
@@ -206,16 +196,17 @@ function displayArts(list) {
 
   list.forEach(art => {
     const card = document.createElement("a");
-    card.href = `artwork.html?id=${art.id}`;
+
     card.className = "item-card";
+    card.href = `artwork.html?id=${art.id}`;
 
     card.innerHTML = `
-      <img class="item-img" src="${art.imageUrl || 'https://via.placeholder.com/300'}">
+      <img class="item-img" src="${art.imageUrl}">
       <div class="item-content">
-        <div class="item-title">${art.title || 'Untitled'}</div>
-        <div class="item-artist">by ${art.artistName || 'Unknown'}</div>
+        <div class="item-title">${art.title}</div>
+        <div class="item-artist">by ${art.artistName}</div>
         <div class="item-meta">
-          <span class="item-price">₹${art.price || 0}</span>
+          <span class="item-price">₹${art.price}</span>
         </div>
       </div>
     `;
@@ -224,48 +215,41 @@ function displayArts(list) {
   });
 }
 
-/* ================== 5. NORMAL SEARCH ================== */
-searchInput.addEventListener("input", () => {
-  const q = searchInput.value.toLowerCase();
+// 🔥 COSINE SIMILARITY
+function cosineSimilarity(a, b) {
+  if (!a || !b || a.length !== b.length) return 0;
 
-  const filtered = allArts.filter(a =>
-    (a.title || "").toLowerCase().includes(q) ||
-    (a.artistName || "").toLowerCase().includes(q)
-  );
+  let dot = 0;
+  let magA = 0;
+  let magB = 0;
 
-  displayArts(filtered);
-});
-
-/* ================== 6. COSINE SIMILARITY ================== */
-function cosineSimilarity(vecA, vecB) {
-  if (!vecA || !vecB || vecA.length !== vecB.length) return 0;
-
-  let dot = 0, magA = 0, magB = 0;
-
-  for (let i = 0; i < vecA.length; i++) {
-    dot += vecA[i] * vecB[i];
-    magA += vecA[i] * vecA[i];
-    magB += vecB[i] * vecB[i];
+  for (let i = 0; i < a.length; i++) {
+    dot += a[i] * b[i];
+    magA += a[i] * a[i];
+    magB += b[i] * b[i];
   }
 
   return dot / (Math.sqrt(magA) * Math.sqrt(magB));
 }
 
-/* ================== 7. AI SEARCH ================== */
+// 🔥 AI SEARCH FUNCTION
 async function handleSearch() {
   const query = searchInput.value.trim();
   if (!query) return;
 
   loading.style.display = "block";
-  loading.innerText = "AI Searching...";
+  loading.innerText = "🤖 AI is thinking...";
 
   try {
-    const res = await fetch("/api/embed", {
+    // 1. Get embedding from Vercel
+    const res = await fetch("https://art-kart-435c1bnvv-nickfury-s-projects.vercel.app/api/embed", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({ query })
+      body: JSON.stringify({
+        query: query
+      })
     });
 
     const data = await res.json();
@@ -274,42 +258,58 @@ async function handleSearch() {
 
     const queryVec = data.embedding;
 
+    // 2. Compare with Firestore data
     const results = allArts.map(art => {
-      let score = cosineSimilarity(queryVec, art.embedding || []);
+      const score = cosineSimilarity(queryVec, art.embedding);
 
-      // bonus boost
-      if ((art.title || "").toLowerCase().includes(query.toLowerCase())) {
-        score += 0.2;
-      }
+      // 🔥 hybrid boost (extra accuracy)
+      let boost = 0;
+      const q = query.toLowerCase();
 
-      return { ...art, score };
+      if ((art.title || "").toLowerCase().includes(q)) boost += 0.3;
+      if ((art.category || "").toLowerCase().includes(q)) boost += 0.2;
+      if ((art.description || "").toLowerCase().includes(q)) boost += 0.2;
+
+      return {
+        ...art,
+        score: score + boost
+      };
     });
 
+    // 3. Sort
     results.sort((a, b) => b.score - a.score);
 
+    // 4. Show
     displayArts(results);
 
   } catch (err) {
     console.error(err);
-    alert("AI search failed");
+
+    // fallback keyword search
+    const q = query.toLowerCase();
+
+    const filtered = allArts.filter(a =>
+      (a.title || "").toLowerCase().includes(q) ||
+      (a.artistName || "").toLowerCase().includes(q)
+    );
+
+    displayArts(filtered);
   }
 
   loading.style.display = "none";
   loading.innerText = "Loading artworks...";
 }
 
-/* ================== 8. ENTER KEY ================== */
-searchInput.addEventListener("keydown", function(e) {
+// 🔥 Enter key support
+searchInput.addEventListener("keypress", function(e) {
   if (e.key === "Enter") {
     handleSearch();
   }
 });
 
-/* ================== 9. ICON CLICK ================== */
-document.querySelector(".search-icon").onclick = handleSearch;
-
-/* ================== 10. INIT ================== */
+// 🔥 Initial load
 loadAllArtworks();
 </script>
+
 </body>
 </html>
