@@ -1,46 +1,37 @@
 export default async function handler(req, res) {
   try {
-    if (req.method !== "POST") {
-      return res.status(405).json({ error: "Use POST request" });
+    if (req.method !== "POST") return res.status(405).json({ error: "Use POST" });
+
+    const { query, imageBase64, mimeType } = req.body;
+
+    let part;
+    if (imageBase64) {
+      // If user sends an image
+      part = { inlineData: { data: imageBase64, mimeType: mimeType || "image/jpeg" } };
+    } else {
+      // If user sends text
+      part = { text: query };
     }
 
-    let body = req.body;
-
-    if (typeof body === "string") {
-      body = JSON.parse(body);
-    }
-
-    const query = body?.query;
-
-    if (!query) {
-      return res.status(400).json({ error: "Query missing" });
-    }
-
-    const response = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-2-preview:embedContent?key=" +
-        process.env.GEMINI_API_KEY,
+    const apiReq = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-2-preview:embedContent?key=${process.env.GEMINI_API_KEY}`,
       {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          contents: [{
-            parts: [{ text: query }]
-          }],
+          content: { parts: [part] } // Gemini 2 syntax
         }),
       }
     );
 
-    const data = await response.json();
+    const data = await apiReq.json();
+    
+    // In Gemini 2, the result key is often 'embedding' (singular)
+    const vector = data.embedding?.values;
 
-    if (!data.embeddings) {
-      return res.status(500).json({ error: "Gemini failed", details: data });
-    }
+    if (!vector) return res.status(500).json({ error: "Embedding failed", details: data });
 
-    return res.status(200).json({
-      embedding: data.embeddings[0].values,
-    });
+    return res.status(200).json({ embedding: vector });
 
   } catch (error) {
     return res.status(500).json({ error: error.message });
