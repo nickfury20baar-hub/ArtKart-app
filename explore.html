@@ -138,8 +138,8 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
-  <script>
-              // 1. Setup
+<script>
+/* ================== 1. FIREBASE SETUP ================== */
 const firebaseConfig = {
   apiKey: "AIzaSyCZ-QeZrs6qJlDk4ZMs9LP2iQ4wjJ2vcF8",
   authDomain: "artkart-69692.firebaseapp.com",
@@ -149,48 +149,52 @@ const firebaseConfig = {
   appId: "1:1067935304156:web:d8c50769ecb9797f8d6719"
 };
 
-// Prevent double initialization
 if (!firebase.apps.length) {
-    firebase.initializeApp(firebaseConfig);
+  firebase.initializeApp(firebaseConfig);
 }
+
 const db = firebase.firestore();
 
+/* ================== 2. GLOBAL STATE ================== */
 let allArts = [];
+
 const grid = document.getElementById("itemsGrid");
 const loading = document.getElementById("loading");
 const empty = document.getElementById("emptyState");
 const searchInput = document.getElementById("searchInput");
 
-// 2. The Core Loading Function
+/* ================== 3. LOAD DATA ================== */
 async function loadAllArtworks() {
-  console.log("Attempting to fetch from Firestore...");
   loading.style.display = "block";
-  
+
   try {
     const snap = await db.collection("arts").get();
-    
+
     if (snap.empty) {
-      console.warn("Database is empty! Check your 'arts' collection name.");
-      loading.style.display = "none";
+      grid.style.display = "none";
       empty.style.display = "block";
       return;
     }
 
-    allArts = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    console.log("Successfully loaded:", allArts.length, "items");
-    
+    allArts = snap.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+
     displayArts(allArts);
+
   } catch (err) {
-    console.error("Firestore Error:", err.message);
-    loading.innerHTML = "Error: " + err.message;
-  } finally {
-    loading.style.display = "none";
+    console.error("Firestore error:", err);
+    loading.innerHTML = "Error loading data";
   }
+
+  loading.style.display = "none";
 }
 
-// 3. Rendering to the Screen
+/* ================== 4. DISPLAY ================== */
 function displayArts(list) {
   grid.innerHTML = "";
+
   if (list.length === 0) {
     grid.style.display = "none";
     empty.style.display = "block";
@@ -204,34 +208,108 @@ function displayArts(list) {
     const card = document.createElement("a");
     card.href = `artwork.html?id=${art.id}`;
     card.className = "item-card";
+
     card.innerHTML = `
-      <img class="item-img" src="${art.imageUrl || 'https://via.placeholder.com/300'}" onerror="this.src='https://via.placeholder.com/300'">
+      <img class="item-img" src="${art.imageUrl || 'https://via.placeholder.com/300'}">
       <div class="item-content">
         <div class="item-title">${art.title || 'Untitled'}</div>
         <div class="item-artist">by ${art.artistName || 'Unknown'}</div>
         <div class="item-meta">
-          <span class="item-price">₹${(art.price || 0)}</span>
+          <span class="item-price">₹${art.price || 0}</span>
         </div>
       </div>
     `;
+
     grid.appendChild(card);
   });
 }
 
-// 4. Search Listeners
+/* ================== 5. NORMAL SEARCH ================== */
 searchInput.addEventListener("input", () => {
   const q = searchInput.value.toLowerCase();
-  const filtered = allArts.filter(a => 
-    (a.title || "").toLowerCase().includes(q) || 
+
+  const filtered = allArts.filter(a =>
+    (a.title || "").toLowerCase().includes(q) ||
     (a.artistName || "").toLowerCase().includes(q)
   );
+
   displayArts(filtered);
 });
 
-// Run on page load
+/* ================== 6. COSINE SIMILARITY ================== */
+function cosineSimilarity(vecA, vecB) {
+  if (!vecA || !vecB || vecA.length !== vecB.length) return 0;
+
+  let dot = 0, magA = 0, magB = 0;
+
+  for (let i = 0; i < vecA.length; i++) {
+    dot += vecA[i] * vecB[i];
+    magA += vecA[i] * vecA[i];
+    magB += vecB[i] * vecB[i];
+  }
+
+  return dot / (Math.sqrt(magA) * Math.sqrt(magB));
+}
+
+/* ================== 7. AI SEARCH ================== */
+async function handleSearch() {
+  const query = searchInput.value.trim();
+  if (!query) return;
+
+  loading.style.display = "block";
+  loading.innerText = "AI Searching...";
+
+  try {
+    const res = await fetch("/api/embed", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ query })
+    });
+
+    const data = await res.json();
+
+    if (!data.embedding) throw new Error("No embedding");
+
+    const queryVec = data.embedding;
+
+    const results = allArts.map(art => {
+      let score = cosineSimilarity(queryVec, art.embedding || []);
+
+      // bonus boost
+      if ((art.title || "").toLowerCase().includes(query.toLowerCase())) {
+        score += 0.2;
+      }
+
+      return { ...art, score };
+    });
+
+    results.sort((a, b) => b.score - a.score);
+
+    displayArts(results);
+
+  } catch (err) {
+    console.error(err);
+    alert("AI search failed");
+  }
+
+  loading.style.display = "none";
+  loading.innerText = "Loading artworks...";
+}
+
+/* ================== 8. ENTER KEY ================== */
+searchInput.addEventListener("keydown", function(e) {
+  if (e.key === "Enter") {
+    handleSearch();
+  }
+});
+
+/* ================== 9. ICON CLICK ================== */
+document.querySelector(".search-icon").onclick = handleSearch;
+
+/* ================== 10. INIT ================== */
 loadAllArtworks();
-
-
 </script>
 </body>
 </html>
