@@ -139,176 +139,153 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
 <script>
-// 🔥 Firebase setup
-const firebaseConfig = {
-  apiKey: "YOUR_KEY",
-  authDomain: "artkart-69692.firebaseapp.com",
-  projectId: "artkart-69692",
-};
-
-if (!firebase.apps.length) {
-  firebase.initializeApp(firebaseConfig);
-}
-const db = firebase.firestore();
-
-// 🔥 State
-let allArts = [];
-
-const grid = document.getElementById("itemsGrid");
-const loading = document.getElementById("loading");
-const empty = document.getElementById("emptyState");
 const searchInput = document.getElementById("searchInput");
+const resultsContainer = document.getElementById("results");
 
-// 🔥 Load all artworks
-async function loadAllArtworks() {
-  loading.style.display = "block";
-
-  try {
-    const snap = await db.collection("arts").get();
-
-    allArts = snap.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
-
-    displayArts(allArts);
-
-  } catch (err) {
-    console.error(err);
-    loading.innerHTML = "Error loading data";
-  }
-
-  loading.style.display = "none";
-}
-
-// 🔥 Display function
-function displayArts(list) {
-  grid.innerHTML = "";
-
-  if (list.length === 0) {
-    grid.style.display = "none";
-    empty.style.display = "block";
-    return;
-  }
-
-  grid.style.display = "grid";
-  empty.style.display = "none";
-
-  list.forEach(art => {
-    const card = document.createElement("a");
-
-    card.className = "item-card";
-    card.href = `artwork.html?id=${art.id}`;
-
-    card.innerHTML = `
-      <img class="item-img" src="${art.imageUrl}">
-      <div class="item-content">
-        <div class="item-title">${art.title}</div>
-        <div class="item-artist">by ${art.artistName}</div>
-        <div class="item-meta">
-          <span class="item-price">₹${art.price}</span>
-        </div>
-      </div>
-    `;
-
-    grid.appendChild(card);
-  });
-}
-
-// 🔥 COSINE SIMILARITY
+// ----------------------------
+// Cosine Similarity
+// ----------------------------
 function cosineSimilarity(a, b) {
-  if (!a || !b || a.length !== b.length) return 0;
-
-  let dot = 0;
-  let magA = 0;
-  let magB = 0;
+  let dot = 0, normA = 0, normB = 0;
 
   for (let i = 0; i < a.length; i++) {
     dot += a[i] * b[i];
-    magA += a[i] * a[i];
-    magB += b[i] * b[i];
+    normA += a[i] * a[i];
+    normB += b[i] * b[i];
   }
 
-  return dot / (Math.sqrt(magA) * Math.sqrt(magB));
+  return dot / (Math.sqrt(normA) * Math.sqrt(normB));
 }
 
-// 🔥 AI SEARCH FUNCTION
-async function handleSearch() {
-  const query = searchInput.value.trim();
+// ----------------------------
+// Keyword score (simple boost)
+// ----------------------------
+function keywordScore(art, query) {
+  const text = (
+    (art.title || "") + " " +
+    (art.description || "") + " " +
+    (art.category || "")
+  ).toLowerCase();
+
+  const words = query.toLowerCase().split(" ");
+
+  let score = 0;
+
+  words.forEach(word => {
+    if (text.includes(word)) score += 1;
+  });
+
+  return score;
+}
+
+// ----------------------------
+// Render Results
+// ----------------------------
+function renderResults(arts) {
+  resultsContainer.innerHTML = "";
+
+  if (arts.length === 0) {
+    resultsContainer.innerHTML = "<p>No results found</p>";
+    return;
+  }
+
+  arts.forEach(art => {
+    const card = document.createElement("div");
+    card.className = "art-card";
+
+    card.innerHTML = `
+      <img src="${art.imageUrl}" />
+      <h3>${art.title}</h3>
+      <p>${art.category || ""}</p>
+      <p>₹${art.price}</p>
+    `;
+
+    resultsContainer.appendChild(card);
+  });
+}
+
+// ----------------------------
+// MAIN SEARCH FUNCTION
+// ----------------------------
+async function performSearch(query) {
   if (!query) return;
 
-  loading.style.display = "block";
-  loading.innerText = "🤖 AI is thinking...";
+  resultsContainer.innerHTML = "Searching...";
 
   try {
-    // 1. Get embedding from Vercel
-    const res = await fetch("https://art-kart-435c1bnvv-nickfury-s-projects.vercel.app/api/embed", {
+    // Step 1: Get query embedding
+    const res = await fetch("/api/embed", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({
-        query: query
-      })
+      body: JSON.stringify({ query })
     });
 
-    const data = await res.json();
+    const { embedding } = await res.json();
 
-    if (!data.embedding) throw new Error("No embedding");
+    // Step 2: Fetch all artworks
+    const snap = await db.collection("arts").get();
+    const arts = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-    const queryVec = data.embedding;
+    // Step 3: Score each artwork
+    arts.forEach(art => {
+      let aiScore = 0;
 
-    // 2. Compare with Firestore data
-    const results = allArts.map(art => {
-      const score = cosineSimilarity(queryVec, art.embedding);
+      if (art.embedding) {
+        aiScore = cosineSimilarity(embedding, art.embedding);
+      }
 
-      // 🔥 hybrid boost (extra accuracy)
-      let boost = 0;
-      const q = query.toLowerCase();
+      const kwScore = keywordScore(art, query);
 
-      if ((art.title || "").toLowerCase().includes(q)) boost += 0.3;
-      if ((art.category || "").toLowerCase().includes(q)) boost += 0.2;
-      if ((art.description || "").toLowerCase().includes(q)) boost += 0.2;
-
-      return {
-        ...art,
-        score: score + boost
-      };
+      // ----------------------------
+      // HYBRID SCORE (IMPORTANT)
+      // ----------------------------
+      art.score = (aiScore * 0.7) + (kwScore * 0.3);
+      art.aiScore = aiScore;
+      art.kwScore = kwScore;
     });
 
-    // 3. Sort
-    results.sort((a, b) => b.score - a.score);
+    // Step 4: Sort by final score
+    arts.sort((a, b) => b.score - a.score);
 
-    // 4. Show
-    displayArts(results);
+    // Step 5: Top results
+    const results = arts.slice(0, 20);
+
+    renderResults(results);
 
   } catch (err) {
     console.error(err);
-
-    // fallback keyword search
-    const q = query.toLowerCase();
-
-    const filtered = allArts.filter(a =>
-      (a.title || "").toLowerCase().includes(q) ||
-      (a.artistName || "").toLowerCase().includes(q)
-    );
-
-    displayArts(filtered);
+    resultsContainer.innerHTML = "Error while searching";
   }
-
-  loading.style.display = "none";
-  loading.innerText = "Loading artworks...";
 }
 
-// 🔥 Enter key support
-searchInput.addEventListener("keypress", function(e) {
-  if (e.key === "Enter") {
-    handleSearch();
-  }
+// ----------------------------
+// Debounced Input Listener
+// ----------------------------
+let timeout;
+
+searchInput.addEventListener("input", (e) => {
+  const query = e.target.value.trim();
+
+  clearTimeout(timeout);
+
+  timeout = setTimeout(() => {
+    performSearch(query);
+  }, 400);
 });
 
-// 🔥 Initial load
-loadAllArtworks();
+// ----------------------------
+// Optional: initial load (show all)
+// ----------------------------
+async function loadAll() {
+  const snap = await db.collection("arts").get();
+  const arts = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  renderResults(arts);
+}
+
+loadAll();
+
 </script>
 
 </body>
