@@ -1,39 +1,25 @@
 export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
   try {
-    if (req.method !== "POST") return res.status(405).json({ error: "Use POST" });
+    const { messages } = req.body;
 
-    const { query, imageBase64, mimeType } = req.body;
+    // 🔹 TEMP DEMO RESPONSE (replace later with real AI)
+    const userMessage = messages?.slice(-1)[0]?.content || '';
 
-    let part;
-    if (imageBase64) {
-      // If user sends an image
-      part = { inlineData: { data: imageBase64, mimeType: mimeType || "image/jpeg" } };
-    } else {
-      // If user sends text
-      part = { text: query };
-    }
-
-    const apiReq = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-2-preview:embedContent?key=${process.env.GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          content: { parts: [part] } // Gemini 2 syntax
-        }),
-      }
-    );
-
-    const data = await apiReq.json();
-    
-    // In Gemini 2, the result key is often 'embedding' (singular)
-    const vector = data.embedding?.values;
-
-    if (!vector) return res.status(500).json({ error: "Embedding failed", details: data });
-
-    return res.status(200).json({ embedding: vector });
+    return res.status(200).json({
+      choices: [
+        {
+          message: {
+            content: `Demo reply from Vercel API: You said "${userMessage}"`
+          }
+        }
+      ]
+    });
 
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: 'Server error' });
   }
 }
