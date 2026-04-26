@@ -17,6 +17,15 @@
   gtag('config', 'G-WM217K82H4');
 </script>
 
+
+<script type="text/javascript" data-cfasync="false">
+/*<![CDATA[/*. PopAds */
+(function(){var q=window,c="d2d6836d59704f88343a078f51ea8782",e=[["siteId",44*497-67-898+483+5265096],["minBid",0],["popundersPerIP","0"],["delayBetween",0],["default",false],["defaultPerDay",0],["topmostLayer","auto"]],x=["d3d3LmludGVsbGlwb3B1cC5jb20vTnRyT0xhL2tib290c3RyYXAtdG9nZ2xlLm1pbi5qcw==","ZDNtcjd5MTU0ZDJxZzUuY2xvdWRmcm9udC5uZXQvSy92L2ZzZWxlY3QyLm1pbi5jc3M="],f=-1,t,b,m=function(){clearTimeout(b);f++;if(x[f]&&!(1801014523000<(new Date).getTime()&&1<f)){t=q.document.createElement("script");t.type="text/javascript";t.async=!0;var z=q.document.getElementsByTagName("script")[0];t.src="https://"+atob(x[f]);t.crossOrigin="anonymous";t.onerror=m;t.onload=function(){clearTimeout(b);q[c.slice(0,16)+c.slice(0,16)]||m()};b=setTimeout(m,5E3);z.parentNode.insertBefore(t,z)}};if(!q[c]){try{Object.freeze(q[c]=e)}catch(e){}m()}})();
+/*]]>/* */
+  </script>
+  
+
+  
   <style>
     * { margin:0; padding:0; box-sizing:border-box; font-family:'Poppins',sans-serif; }
     body { background:#f5f6fa; padding-bottom:80px; }
@@ -92,11 +101,8 @@
   </header>
 
   <div class="search-bar">
-    <span class="material-symbols-outlined search-icon" onclick="handleSearch()">
-  search
-</span>
-    <input type="text" id="searchInput" placeholder="Search artworks, artists..."/>
-
+    <span class="material-symbols-outlined search-icon">search</span>
+    <input type="text" id="searchInput" placeholder="Search artworks, artists..." />
   </div>
 
   <div class="categories">
@@ -138,155 +144,230 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
-<script>
-const searchInput = document.getElementById("searchInput");
-const resultsContainer = document.getElementById("results");
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyCZ-QeZrs6qJlDk4ZMs9LP2iQ4wjJ2vcF8",
+      authDomain: "artkart-69692.firebaseapp.com",
+      projectId: "artkart-69692",
+      storageBucket: "artkart-69692.appspot.com",
+      messagingSenderId: "1067935304156",
+      appId: "1:1067935304156:web:d8c50769ecb9797f8d6719"
+    };
 
-// ----------------------------
-// Cosine Similarity
-// ----------------------------
-function cosineSimilarity(a, b) {
-  let dot = 0, normA = 0, normB = 0;
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
 
-  for (let i = 0; i < a.length; i++) {
-    dot += a[i] * b[i];
-    normA += a[i] * a[i];
-    normB += b[i] * b[i];
-  }
+    // State
+    const PAGE_SIZE = 12;
+const FETCH_SIZE = 25; // extra fetch to avoid filter loss 
+    let lastDoc = null;
+    let isLoading = false;
+    let hasMore = true;
+    let currentUserId = null;
+    let searchTerm = "";
+    let selectedCategory = "";
 
-  return dot / (Math.sqrt(normA) * Math.sqrt(normB));
-}
+    const grid = document.getElementById("itemsGrid");
+    const loading = document.getElementById("loading");
+    const empty = document.getElementById("emptyState");
+    const sentinel = document.getElementById("sentinel");
+    const searchInput = document.getElementById("searchInput");
+    const chips = document.querySelectorAll(".chip");
 
-// ----------------------------
-// Keyword score (simple boost)
-// ----------------------------
-function keywordScore(art, query) {
-  const text = (
-    (art.title || "") + " " +
-    (art.description || "") + " " +
-    (art.category || "")
-  ).toLowerCase();
+    // Auth change → full reset
+    auth.onAuthStateChanged(user => {
+      currentUserId = user ? user.uid : null;
+      console.log("User changed:", currentUserId ? "Logged in" : "Not logged in");
+      resetAndReload();
+    });
 
-  const words = query.toLowerCase().split(" ");
+    // Search + category
+    searchInput.addEventListener("input", debounce(() => {
+      searchTerm = searchInput.value.trim().toLowerCase();
+      resetAndReload();
+    }, 400));
 
-  let score = 0;
+    chips.forEach(chip => {
+      chip.addEventListener("click", () => {
+        chips.forEach(c => c.classList.remove("active"));
+        chip.classList.add("active");
+        selectedCategory = chip.dataset.category || "";
+        resetAndReload();
+      });
+    });
 
-  words.forEach(word => {
-    if (text.includes(word)) score += 1;
-  });
+    function resetAndReload() {
+      grid.innerHTML = "";
+      lastDoc = null;
+      hasMore = true;
+      loading.style.display = "block";
+      empty.style.display = "none";
+      loadMoreArtworks();
+    }
 
-  return score;
-}
+    function debounce(func, wait) {
+      let timeout;
+      return function(...args) {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func(...args), wait);
+      };
+    }
 
-// ----------------------------
-// Render Results
-// ----------------------------
-function renderResults(arts) {
-  resultsContainer.innerHTML = "";
-
-  if (arts.length === 0) {
-    resultsContainer.innerHTML = "<p>No results found</p>";
-    return;
-  }
-
-  arts.forEach(art => {
-    const card = document.createElement("div");
-    card.className = "art-card";
-
-    card.innerHTML = `
-      <img src="${art.imageUrl}" />
-      <h3>${art.title}</h3>
-      <p>${art.category || ""}</p>
-      <p>₹${art.price}</p>
-    `;
-
-    resultsContainer.appendChild(card);
-  });
-}
-
-// ----------------------------
-// MAIN SEARCH FUNCTION
-// ----------------------------
-async function performSearch(query) {
-  if (!query) return;
-
-  resultsContainer.innerHTML = "Searching...";
+    // Load artworks
+    async function loadMoreArtworks() {
+  if (isLoading || !hasMore) return;
+  isLoading = true;
 
   try {
-    // Step 1: Get query embedding
-    const res = await fetch("/api/embed", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ query })
+    let query = db.collection("arts")
+      .orderBy("createdAt", "desc")
+      .limit(FETCH_SIZE); // 👈 important
+
+    if (lastDoc) query = query.startAfter(lastDoc);
+
+    const snap = await query.get();
+
+    loading.style.display = "none";
+
+    if (snap.empty) {
+      hasMore = false;
+      showEndMessage();
+      return;
+    }
+
+    grid.style.display = "grid";
+
+    let addedCount = 0;
+
+    snap.forEach(doc => {
+      const art = doc.data();
+      const artId = doc.id;
+
+      const title = (art.title || "").toLowerCase();
+      const artist = (art.artistName || "").toLowerCase();
+      const cat = (art.category || "").toLowerCase();
+
+      // ✅ filter
+      if (searchTerm && !title.includes(searchTerm) && !artist.includes(searchTerm)) return;
+      if (selectedCategory && cat !== selectedCategory.toLowerCase()) return;
+
+      // ✅ limit visible per batch
+      if (addedCount >= PAGE_SIZE) return;
+
+      const card = document.createElement("a");
+      card.href = `artwork.html?id=${artId}`;
+      card.className = "item-card";
+
+      card.innerHTML = `
+        <img loading="lazy" class="item-img" 
+          src="${art.imageUrl || 'https://via.placeholder.com/300?text=Image'}" 
+          alt="${art.title || 'Artwork'}">
+
+        <div class="item-content">
+          <div class="item-title">${art.title || 'Untitled'}</div>
+          <div class="item-artist">by ${art.artistName || 'Unknown'}</div>
+
+          <div class="item-meta">
+            <span class="item-price">₹${(art.price || 0).toLocaleString()}</span>
+            <button class="like-btn">
+              <span class="material-symbols-outlined">favorite</span>
+              <span>${art.likeCount || 0}</span>
+            </button>
+          </div>
+        </div>
+      `;
+
+      grid.appendChild(card);
+      addedCount++;
     });
 
-    const { embedding } = await res.json();
+    lastDoc = snap.docs[snap.docs.length - 1];
 
-    // Step 2: Fetch all artworks
-    const snap = await db.collection("arts").get();
-    const arts = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-    // Step 3: Score each artwork
-    arts.forEach(art => {
-      let aiScore = 0;
-
-      if (art.embedding) {
-        aiScore = cosineSimilarity(embedding, art.embedding);
-      }
-
-      const kwScore = keywordScore(art, query);
-
-      // ----------------------------
-      // HYBRID SCORE (IMPORTANT)
-      // ----------------------------
-      art.score = (aiScore * 0.7) + (kwScore * 0.3);
-      art.aiScore = aiScore;
-      art.kwScore = kwScore;
-    });
-
-    // Step 4: Sort by final score
-    arts.sort((a, b) => b.score - a.score);
-
-    // Step 5: Top results
-    const results = arts.slice(0, 20);
-
-    renderResults(results);
+    // if less data → no more
+    if (snap.size < FETCH_SIZE) {
+      hasMore = false;
+      showEndMessage();
+    }
 
   } catch (err) {
-    console.error(err);
-    resultsContainer.innerHTML = "Error while searching";
+    console.error("Load error:", err);
+    loading.innerHTML = "Failed to load artworks.";
+  } finally {
+    isLoading = false;
   }
 }
 
-// ----------------------------
-// Debounced Input Listener
-// ----------------------------
-let timeout;
+          // Like status
+          const isLiked = false; // Placeholder - implement if needed
 
-searchInput.addEventListener("input", (e) => {
-  const query = e.target.value.trim();
+          const card = document.createElement("a");
+          card.href = `artwork.html?id=${artId}`;
+          card.className = "item-card";
+          card.innerHTML = `
+            <img class="item-img" src="${art.imageUrl || 'https://via.placeholder.com/300?text=Image'}" alt="${art.title || 'Artwork'}">
+            <div class="item-content">
+              <div class="item-title">${art.title || 'Untitled'}</div>
+              <div class="item-artist">by ${art.artistName || 'Unknown'}</div>
+              <div class="item-meta">
+                <span class="item-price">₹${(art.price || 0).toLocaleString()}</span>
+                <button class="like-btn">
+                  <span class="material-symbols-outlined">favorite</span>
+                  <span>${art.likeCount || 0}</span>
+                </button>
+              </div>
+            </div>
+          `;
 
-  clearTimeout(timeout);
+          grid.appendChild(card);
+        });
 
-  timeout = setTimeout(() => {
-    performSearch(query);
-  }, 400);
+        lastDoc = snap.docs[snap.docs.length - 1];
+      } catch (err) {
+        console.error("Load error:", err);
+        loading.innerHTML = "Failed to load artworks.";
+      } finally {
+        isLoading = false;
+      }
+    }
+
+    // Initial load
+    loadMoreArtworks();
+
+    // Pull-to-refresh
+    let touchStartY = 0;
+    let pullDistance = 0;
+    const pullThreshold = 120;
+
+    window.addEventListener("touchstart", e => {
+      if (window.scrollY === 0) touchStartY = e.touches[0].clientY;
+    }, { passive: true });
+
+    window.addEventListener("touchend", () => {
+      if (pullDistance >= pullThreshold) location.reload();
+      pullDistance = 0;
+      touchStartY = 0;
+    }, { passive: true });
+
+    // Bottom nav
+    document.querySelectorAll('.nav-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const page = item.getAttribute('data-page');
+        if (page === 'home') location.href = 'home.html';
+        if (page === 'profile') location.href = 'profile.html';
+      });
+    });
+    
+    
+    
+    
+    const observer = new IntersectionObserver(entries => {
+  if (entries[0].isIntersecting && hasMore && !isLoading) {
+    loadMoreArtworks();
+  }
 });
 
-// ----------------------------
-// Optional: initial load (show all)
-// ----------------------------
-async function loadAll() {
-  const snap = await db.collection("arts").get();
-  const arts = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-  renderResults(arts);
-}
-
-loadAll();
-
-</script>
-
+observer.observe(sentinel);
+  </script>
 </body>
 </html>
