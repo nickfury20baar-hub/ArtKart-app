@@ -158,73 +158,33 @@
     const auth = firebase.auth();
     const db = firebase.firestore();
 
-    // State
-    const PAGE_SIZE = 12;
-const FETCH_SIZE = 25; // extra fetch to avoid filter loss 
-    let lastDoc = null;
-    let isLoading = false;
-    let hasMore = true;
-    let currentUserId = null;
-    let searchTerm = "";
-    let selectedCategory = "";
+// -------- SETTINGS --------
+const PAGE_SIZE = 12;
 
-    const grid = document.getElementById("itemsGrid");
-    const loading = document.getElementById("loading");
-    const empty = document.getElementById("emptyState");
-    const sentinel = document.getElementById("sentinel");
-    const searchInput = document.getElementById("searchInput");
-    const chips = document.querySelectorAll(".chip");
+let lastDoc = null;
+let isLoading = false;
+let hasMore = true;
 
-    // Auth change → full reset
-    auth.onAuthStateChanged(user => {
-      currentUserId = user ? user.uid : null;
-      console.log("User changed:", currentUserId ? "Logged in" : "Not logged in");
-      resetAndReload();
-    });
+// -------- ELEMENTS --------
+const grid = document.getElementById("itemsGrid");
+const loading = document.getElementById("loading");
+const sentinel = document.getElementById("sentinel");
 
-    // Search + category
-    searchInput.addEventListener("input", debounce(() => {
-      searchTerm = searchInput.value.trim().toLowerCase();
-      resetAndReload();
-    }, 400));
-
-    chips.forEach(chip => {
-      chip.addEventListener("click", () => {
-        chips.forEach(c => c.classList.remove("active"));
-        chip.classList.add("active");
-        selectedCategory = chip.dataset.category || "";
-        resetAndReload();
-      });
-    });
-
-    function resetAndReload() {
-      grid.innerHTML = "";
-      lastDoc = null;
-      hasMore = true;
-      loading.style.display = "block";
-      empty.style.display = "none";
-      loadMoreArtworks();
-    }
-
-    function debounce(func, wait) {
-      let timeout;
-      return function(...args) {
-        clearTimeout(timeout);
-        timeout = setTimeout(() => func(...args), wait);
-      };
-    }
-
-    // Load artworks
-    async function loadMoreArtworks() {
+// -------- LOAD FUNCTION --------
+async function loadMoreArtworks() {
   if (isLoading || !hasMore) return;
   isLoading = true;
+
+  loading.style.display = "block";
 
   try {
     let query = db.collection("arts")
       .orderBy("createdAt", "desc")
-      .limit(FETCH_SIZE); // 👈 important
+      .limit(PAGE_SIZE);
 
-    if (lastDoc) query = query.startAfter(lastDoc);
+    if (lastDoc) {
+      query = query.startAfter(lastDoc);
+    }
 
     const snap = await query.get();
 
@@ -238,30 +198,17 @@ const FETCH_SIZE = 25; // extra fetch to avoid filter loss
 
     grid.style.display = "grid";
 
-    let addedCount = 0;
-
     snap.forEach(doc => {
       const art = doc.data();
       const artId = doc.id;
-
-      const title = (art.title || "").toLowerCase();
-      const artist = (art.artistName || "").toLowerCase();
-      const cat = (art.category || "").toLowerCase();
-
-      // ✅ filter
-      if (searchTerm && !title.includes(searchTerm) && !artist.includes(searchTerm)) return;
-      if (selectedCategory && cat !== selectedCategory.toLowerCase()) return;
-
-      // ✅ limit visible per batch
-      if (addedCount >= PAGE_SIZE) return;
 
       const card = document.createElement("a");
       card.href = `artwork.html?id=${artId}`;
       card.className = "item-card";
 
       card.innerHTML = `
-        <img loading="lazy" class="item-img" 
-          src="${art.imageUrl || 'https://via.placeholder.com/300?text=Image'}" 
+        <img loading="lazy" class="item-img"
+          src="${art.imageUrl || 'https://via.placeholder.com/300?text=No+Image'}"
           alt="${art.title || 'Artwork'}">
 
         <div class="item-content">
@@ -279,76 +226,52 @@ const FETCH_SIZE = 25; // extra fetch to avoid filter loss
       `;
 
       grid.appendChild(card);
-      addedCount++;
     });
 
     lastDoc = snap.docs[snap.docs.length - 1];
 
-    // if less data → no more
-    if (snap.size < FETCH_SIZE) {
+    // अगर कम data आया → end
+    if (snap.size < PAGE_SIZE) {
       hasMore = false;
       showEndMessage();
     }
 
   } catch (err) {
-    console.error("Load error:", err);
-    loading.innerHTML = "Failed to load artworks.";
-  } finally {
-    isLoading = false;
+    loading.innerText = "Failed to load artworks";
+  }
+
+  isLoading = false;
+}
+
+// -------- INFINITE SCROLL --------
+const observer = new IntersectionObserver(entries => {
+  if (entries[0].isIntersecting) {
+    loadMoreArtworks();
+  }
+}, {
+  rootMargin: "200px"
+});
+
+observer.observe(sentinel);
+
+// -------- END MESSAGE --------
+function showEndMessage() {
+  let end = document.getElementById("endMessage");
+
+  if (!end) {
+    end = document.createElement("div");
+    end.id = "endMessage";
+    end.style.textAlign = "center";
+    end.style.padding = "20px";
+    end.style.color = "#777";
+    end.innerText = "No more artworks 🎨";
+
+    document.body.appendChild(end);
   }
 }
 
-          // Like status
-          const isLiked = false; // Placeholder - implement if needed
-
-          const card = document.createElement("a");
-          card.href = `artwork.html?id=${artId}`;
-          card.className = "item-card";
-          card.innerHTML = `
-            <img class="item-img" src="${art.imageUrl || 'https://via.placeholder.com/300?text=Image'}" alt="${art.title || 'Artwork'}">
-            <div class="item-content">
-              <div class="item-title">${art.title || 'Untitled'}</div>
-              <div class="item-artist">by ${art.artistName || 'Unknown'}</div>
-              <div class="item-meta">
-                <span class="item-price">₹${(art.price || 0).toLocaleString()}</span>
-                <button class="like-btn">
-                  <span class="material-symbols-outlined">favorite</span>
-                  <span>${art.likeCount || 0}</span>
-                </button>
-              </div>
-            </div>
-          `;
-
-          grid.appendChild(card);
-        });
-
-        lastDoc = snap.docs[snap.docs.length - 1];
-      } catch (err) {
-        console.error("Load error:", err);
-        loading.innerHTML = "Failed to load artworks.";
-      } finally {
-        isLoading = false;
-      }
-    }
-
-    // Initial load
-    loadMoreArtworks();
-
-    // Pull-to-refresh
-    let touchStartY = 0;
-    let pullDistance = 0;
-    const pullThreshold = 120;
-
-    window.addEventListener("touchstart", e => {
-      if (window.scrollY === 0) touchStartY = e.touches[0].clientY;
-    }, { passive: true });
-
-    window.addEventListener("touchend", () => {
-      if (pullDistance >= pullThreshold) location.reload();
-      pullDistance = 0;
-      touchStartY = 0;
-    }, { passive: true });
-
+// -------- INITIAL LOAD --------
+loadMoreArtworks();
     // Bottom nav
     document.querySelectorAll('.nav-item').forEach(item => {
       item.addEventListener('click', () => {
@@ -357,17 +280,7 @@ const FETCH_SIZE = 25; // extra fetch to avoid filter loss
         if (page === 'profile') location.href = 'profile.html';
       });
     });
-    
-    
-    
-    
-    const observer = new IntersectionObserver(entries => {
-  if (entries[0].isIntersecting && hasMore && !isLoading) {
-    loadMoreArtworks();
-  }
-});
 
-observer.observe(sentinel);
   </script>
 </body>
 </html>
