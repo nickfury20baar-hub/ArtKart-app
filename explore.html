@@ -158,8 +158,8 @@
     const auth = firebase.auth();
     const db = firebase.firestore();
 
-// -------- SETTINGS --------
-const PAGE_SIZE = 12;
+//// -------- SETTINGS --------
+const PAGE_SIZE = 10;
 
 let lastDoc = null;
 let isLoading = false;
@@ -170,58 +170,57 @@ const grid = document.getElementById("itemsGrid");
 const loading = document.getElementById("loading");
 const sentinel = document.getElementById("sentinel");
 
+alert("Script loaded ✅");
+
 // -------- LOAD FUNCTION --------
 async function loadMoreArtworks() {
-  if (isLoading || !hasMore) return;
-  isLoading = true;
+  if (isLoading) {
+    alert("Already loading...");
+    return;
+  }
 
-  loading.style.display = "block";
+  if (!hasMore) {
+    alert("No more data");
+    return;
+  }
+
+  isLoading = true;
+  alert("Loading started 🚀");
 
   try {
-    let query = db.collection("arts")
-      .orderBy("createdAt", "desc")
-      .limit(PAGE_SIZE);
+    let query = db.collection("arts").limit(PAGE_SIZE);
 
-    if (lastDoc) {
-      query = query.startAfter(lastDoc);
-    }
+    alert("Query created");
 
     const snap = await query.get();
 
-    loading.style.display = "none";
+    alert("Data fetched: " + snap.size);
 
     if (snap.empty) {
+      alert("No data found ❌");
       hasMore = false;
-      showEndMessage();
       return;
     }
 
     grid.style.display = "grid";
+    loading.style.display = "none";
 
     snap.forEach(doc => {
       const art = doc.data();
       const artId = doc.id;
 
-      const card = document.createElement("a");
-      card.href = `artwork.html?id=${artId}`;
+      alert("Rendering: " + (art.title || "No title"));
+
+      const card = document.createElement("div");
       card.className = "item-card";
 
       card.innerHTML = `
-        <img loading="lazy" class="item-img"
-          src="${art.imageUrl || 'https://via.placeholder.com/300?text=No+Image'}"
-          alt="${art.title || 'Artwork'}">
+        <img class="item-img"
+          src="${art.imageUrl || 'https://via.placeholder.com/300'}">
 
         <div class="item-content">
           <div class="item-title">${art.title || 'Untitled'}</div>
           <div class="item-artist">by ${art.artistName || 'Unknown'}</div>
-
-          <div class="item-meta">
-            <span class="item-price">₹${(art.price || 0).toLocaleString()}</span>
-            <button class="like-btn">
-              <span class="material-symbols-outlined">favorite</span>
-              <span>${art.likeCount || 0}</span>
-            </button>
-          </div>
         </div>
       `;
 
@@ -230,56 +229,31 @@ async function loadMoreArtworks() {
 
     lastDoc = snap.docs[snap.docs.length - 1];
 
-    // अगर कम data आया → end
     if (snap.size < PAGE_SIZE) {
       hasMore = false;
-      showEndMessage();
+      alert("Reached end ✅");
     }
 
   } catch (err) {
-    loading.innerText = "Failed to load artworks";
+    alert("ERROR: " + err.message);
   }
 
   isLoading = false;
 }
 
-// -------- INFINITE SCROLL --------
+// -------- SCROLL --------
 const observer = new IntersectionObserver(entries => {
   if (entries[0].isIntersecting) {
+    alert("Scroll triggered 🔄");
     loadMoreArtworks();
   }
-}, {
-  rootMargin: "200px"
 });
 
 observer.observe(sentinel);
 
-// -------- END MESSAGE --------
-function showEndMessage() {
-  let end = document.getElementById("endMessage");
-
-  if (!end) {
-    end = document.createElement("div");
-    end.id = "endMessage";
-    end.style.textAlign = "center";
-    end.style.padding = "20px";
-    end.style.color = "#777";
-    end.innerText = "No more artworks 🎨";
-
-    document.body.appendChild(end);
-  }
-}
-
-// -------- INITIAL LOAD --------
+// -------- START --------
 loadMoreArtworks();
-    // Bottom nav
-    document.querySelectorAll('.nav-item').forEach(item => {
-      item.addEventListener('click', () => {
-        const page = item.getAttribute('data-page');
-        if (page === 'home') location.href = 'home.html';
-        if (page === 'profile') location.href = 'profile.html';
-      });
-    });
+        
 
   </script>
 </body>
