@@ -158,103 +158,182 @@
     const auth = firebase.auth();
     const db = firebase.firestore();
 
-//// -------- SETTINGS --------
-const PAGE_SIZE = 10;
+    // --- State Management ---
+    const FETCH_LIMIT = 20; // Number of docs to pull per Firestore request
+    let lastDoc = null;
+    let isLoading = false;
+    let hasMore = true;
+    let currentUserId = null;
+    let searchTerm = "";
+    let selectedCategory = "";
 
-let lastDoc = null;
-let isLoading = false;
-let hasMore = true;
+    const grid = document.getElementById("itemsGrid");
+    const loading = document.getElementById("loading");
+    const empty = document.getElementById("emptyState");
+    const sentinel = document.getElementById("sentinel");
+    const searchInput = document.getElementById("searchInput");
+    const chips = document.querySelectorAll(".chip");
 
-// -------- ELEMENTS --------
-const grid = document.getElementById("itemsGrid");
-const loading = document.getElementById("loading");
-const sentinel = document.getElementById("sentinel");
-
-alert("Script loaded ✅");
-
-// -------- LOAD FUNCTION --------
-async function loadMoreArtworks() {
-  if (isLoading) {
-    alert("Already loading...");
-    return;
-  }
-
-  if (!hasMore) {
-    alert("No more data");
-    return;
-  }
-
-  isLoading = true;
-  alert("Loading started 🚀");
-
-  try {
-    let query = db.collection("arts").limit(PAGE_SIZE);
-
-    alert("Query created");
-
-    const snap = await query.get();
-
-    alert("Data fetched: " + snap.size);
-
-    if (snap.empty) {
-      alert("No data found ❌");
-      hasMore = false;
-      return;
-    }
-
-    grid.style.display = "grid";
-    loading.style.display = "none";
-
-    snap.forEach(doc => {
-      const art = doc.data();
-      const artId = doc.id;
-
-      alert("Rendering: " + (art.title || "No title"));
-
-      const card = document.createElement("div");
-      card.className = "item-card";
-
-      card.innerHTML = `
-        <img class="item-img"
-          src="${art.imageUrl || 'https://via.placeholder.com/300'}">
-
-        <div class="item-content">
-          <div class="item-title">${art.title || 'Untitled'}</div>
-          <div class="item-artist">by ${art.artistName || 'Unknown'}</div>
-        </div>
-      `;
-
-      grid.appendChild(card);
+    // --- Authentication ---
+    auth.onAuthStateChanged(user => {
+      currentUserId = user ? user.uid : null;
+      resetAndReload();
     });
 
-    lastDoc = snap.docs[snap.docs.length - 1];
+    // --- Event Listeners ---
+    searchInput.addEventListener("input", debounce(() => {
+      searchTerm = searchInput.value.trim().toLowerCase();
+      resetAndReload();
+    }, 400));
 
-    if (snap.size < PAGE_SIZE) {
-      hasMore = false;
-      alert("Reached end ✅");
+    chips.forEach(chip => {
+      chip.addEventListener("click", () => {
+        chips.forEach(c => c.classList.remove("active"));
+        chip.classList.add("active");
+        selectedCategory = chip.dataset.category || "";
+        resetAndReload();
+      });
+    });
+
+    // --- Core Functions ---
+
+    function resetAndReload() {
+      grid.innerHTML = "";
+      lastDoc = null;
+      hasMore = true;
+      loading.style.display = "block";
+      loading.innerHTML = "Loading artworks...";
+      empty.style.display = "none";
+      loadMoreArtworks();
     }
 
-  } catch (err) {
-    alert("ERROR: " + err.message);
-  }
+    function debounce(func, wait) {
+      let timeout;
+      return function(...args) {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func(...args), wait);
+      };
+    }
 
-  isLoading = false;
-}
+    async function loadMoreArtworks() {
+      if (isLoading || !hasMore) return;
+      isLoading = true;
 
-// -------- SCROLL --------
-const observer = new IntersectionObserver(entries => {
-  if (entries[0].isIntersecting) {
-    alert("Scroll triggered 🔄");
-    loadMoreArtworks();
-  }
-});
+      try {
+        let query = db.collection("arts")
+          .orderBy("createdAt", "desc")
+          .limit(FETCH_LIMIT);
 
-observer.observe(sentinel);
+        if (lastDoc) {
+          query = query.startAfter(lastDoc);
+        }
 
-// -------- START --------
-loadMoreArtworks();
-        
+        const snap = await query.get();
 
+        if (snap.empty) {
+          hasMore = false;
+          loading.style.display = "none";
+          if (grid.children.length === 0) empty.style.display = "block";
+          return;
+        }
+
+        loading.style.display = "none";
+        grid.style.display = "grid";
+
+        let matchedInThisBatch = 0;
+
+        snap.forEach(doc => {
+          const art = doc.data();
+          const artId = doc.id;
+
+          // Filtering logic
+          const title = (art.title || "").toLowerCase();
+          const artist = (art.artistName || "").toLowerCase();
+          const cat = (art.category || "").toLowerCase();
+
+          const matchesSearch = !searchTerm || title.includes(searchTerm) || artist.includes(searchTerm);
+          const matchesCategory = !selectedCategory || cat === selectedCategory.toLowerCase();
+
+          if (matchesSearch && matchesCategory) {
+            matchedInThisBatch++;
+            const card = document.createElement("a");
+            card.href = `artwork.html?id=${artId}`;
+            card.className = "item-card";
+            card.innerHTML = `
+              <img loading="lazy" class="item-img" 
+                src="${art.imageUrl || 'https://via.placeholder.com/300?text=Image'}" 
+                alt="${art.title || 'Artwork'}">
+              <div class="item-content">
+                <div class="item-title">${art.title || 'Untitled'}</div>
+                <div class="item-artist">by ${art.artistName || 'Unknown'}</div>
+                <div class="item-meta">
+                  <span class="item-price">₹${(art.price || 0).toLocaleString()}</span>
+                  <button class="like-btn">
+                    <span class="material-symbols-outlined">favorite</span>
+                    <span>${art.likeCount || 0}</span>
+                  </button>
+                </div>
+              </div>
+            `;
+            grid.appendChild(card);
+          }
+        });
+
+        // Update the reference point for the next fetch
+        lastDoc = snap.docs[snap.docs.length - 1];
+
+        // If we received fewer items than requested, the DB is exhausted
+        if (snap.size < FETCH_LIMIT) {
+          hasMore = false;
+        }
+
+        /* Crucial Fix: If the filter hid all items in this batch, 
+           immediately trigger the next fetch so the user isn't stuck with a blank screen.
+        */
+        if (matchedInThisBatch === 0 && hasMore) {
+          isLoading = false;
+          return loadMoreArtworks();
+        }
+
+      } catch (err) {
+        console.error("Load error:", err);
+        loading.innerHTML = "Failed to load artworks.";
+      } finally {
+        isLoading = false;
+      }
+    }
+
+    // --- Infinite Scroll Observer ---
+    const observer = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && hasMore && !isLoading) {
+        loadMoreArtworks();
+      }
+    }, { threshold: 0.1 });
+
+    observer.observe(sentinel);
+
+    // --- Pull-to-Refresh & Navigation ---
+    let touchStartY = 0;
+    window.addEventListener("touchstart", e => {
+      if (window.scrollY === 0) touchStartY = e.touches[0].clientY;
+    }, { passive: true });
+
+    window.addEventListener("touchend", e => {
+      const touchEndY = e.changedTouches[0].clientY;
+      if (window.scrollY === 0 && touchEndY - touchStartY > 150) {
+        location.reload();
+      }
+    }, { passive: true });
+
+    document.querySelectorAll('.nav-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const page = item.getAttribute('data-page');
+        if (page === 'home') location.href = 'home.html';
+        if (page === 'profile') location.href = 'profile.html';
+      });
+    });
   </script>
+
 </body>
 </html>
+ 
