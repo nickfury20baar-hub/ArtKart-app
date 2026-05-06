@@ -162,53 +162,95 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
+    
+let lastDoc = null;
+let isLoading = false;
+let allLoaded = false;
+
+    
     const grid = document.getElementById("itemsGrid");
     const loading = document.getElementById("loading");
     const empty = document.getElementById("emptyState");
 
     // Load most liked artworks (top 8 for home page)
-    async function loadMostLiked() {
-      try {
-        const snap = await db.collection("arts")
-          .orderBy("likeCount", "desc")
-          .limit(8)
-          .get();
+    aasync function loadMostLiked(initial = false) {
+  if (isLoading || allLoaded) return;
 
-        loading.style.display = "none";
+  isLoading = true;
+  loading.style.display = "block";
 
-        if (snap.empty) {
-          empty.style.display = "block";
-          return;
-        }
+  try {
+    let query = db.collection("arts")
+      .orderBy("likeCount", "desc")
+      .limit(10);
 
-        grid.style.display = "grid";
-
-        snap.forEach(doc => {
-          const art = doc.data();
-          const card = document.createElement("a");
-          card.href = `artwork.html?id=${doc.id}`;
-          card.className = "item-card";
-          card.innerHTML = `
-            <img class="item-img" src="${art.imageUrl || 'https://via.placeholder.com/300?text=Image'}" alt="${art.title || 'Artwork'}">
-            <div class="item-content">
-              <div class="item-title">${art.title || 'Untitled'}</div>
-              <div class="item-artist">by ${art.artistName || 'Unknown'}</div>
-              <div class="item-meta">
-                <span class="item-price">₹${(art.price || 0).toLocaleString()}</span>
-                <span class="item-likes">❤️ ${art.likeCount || 0}</span>
-              </div>
-            </div>
-          `;
-          grid.appendChild(card);
-        });
-      } catch (err) {
-        console.error("Error loading most liked:", err);
-        loading.innerHTML = "Failed to load artworks. Please try again later.";
-      }
+    // If not first load → start after last doc
+    if (!initial && lastDoc) {
+      query = query.startAfter(lastDoc);
     }
 
-    // Run on page load
+    const snap = await query.get();
+
+    loading.style.display = "none";
+
+    if (snap.empty) {
+      if (!lastDoc) empty.style.display = "block";
+      allLoaded = true;
+      return;
+    }
+
+    grid.style.display = "grid";
+
+    const fragment = document.createDocumentFragment();
+
+    snap.forEach(doc => {
+      const art = doc.data();
+
+      const card = document.createElement("a");
+      card.href = `artwork.html?id=${doc.id}`;
+      card.className = "item-card";
+
+      card.innerHTML = `
+        <img class="item-img" src="${art.imageUrl || 'https://via.placeholder.com/300'}">
+        <div class="item-content">
+          <div class="item-title">${art.title || 'Untitled'}</div>
+          <div class="item-artist">by ${art.artistName || 'Unknown'}</div>
+          <div class="item-meta">
+            <span class="item-price">₹${(art.price || 0).toLocaleString()}</span>
+            <span class="item-likes">❤️ ${art.likeCount || 0}</span>
+          </div>
+        </div>
+      `;
+
+      fragment.appendChild(card);
+    });
+
+    grid.appendChild(fragment);
+
+    // VERY IMPORTANT → save last document
+    lastDoc = snap.docs[snap.docs.length - 1];
+
+    isLoading = false;
+
+  } catch (err) {
+    console.error(err);
+    loading.innerHTML = "Failed to load artworks.";
+    isLoading = false;
+  }
+}
+    / Run on page load
+    loadMostLiked(true);
+
+    window.addEventListener("scroll", () => {
+  const scrollTop = window.scrollY;
+  const windowHeight = window.innerHeight;
+  const fullHeight = document.body.offsetHeight;
+
+  // When user reaches near bottom
+  if (scrollTop + windowHeight >= fullHeight - 200) {
     loadMostLiked();
+  }
+});
 
     // Bottom nav navigation
     document.querySelectorAll('.nav-item').forEach(item => {
