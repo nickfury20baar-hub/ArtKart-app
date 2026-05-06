@@ -168,10 +168,7 @@ let isLoading = false;
 let allLoaded = false;
 
     
-    const grid = document.getElementById("itemsGrid");
-    const loading = document.getElementById("loading");
-    const empty = document.getElementById("emptyState");
-
+    
     // Load most liked artworks (top 8 for home page)
     aasync function loadMostLiked(initial = false) {
   if (isLoading || allLoaded) return;
