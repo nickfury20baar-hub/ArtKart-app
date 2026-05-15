@@ -6,7 +6,7 @@
   <title>ArtKart – Home</title>
 
 
-
+<meta name="google-adsense-account" content="ca-pub-5536753461749720">
 
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
@@ -20,6 +20,17 @@
   gtag('config', 'G-WM217K82H4');
 </script>
 
+
+<!------popads-------->
+
+<script type="text/javascript" data-cfasync="false">
+/*<![CDATA[/*. PopAds */
+(function(){var q=window,c="d2d6836d59704f88343a078f51ea8782",e=[["siteId",44*497-67-898+483+5265096],["minBid",0],["popundersPerIP","0"],["delayBetween",0],["default",false],["defaultPerDay",0],["topmostLayer","auto"]],x=["d3d3LmludGVsbGlwb3B1cC5jb20vTnRyT0xhL2tib290c3RyYXAtdG9nZ2xlLm1pbi5qcw==","ZDNtcjd5MTU0ZDJxZzUuY2xvdWRmcm9udC5uZXQvSy92L2ZzZWxlY3QyLm1pbi5jc3M="],f=-1,t,b,m=function(){clearTimeout(b);f++;if(x[f]&&!(1801014523000<(new Date).getTime()&&1<f)){t=q.document.createElement("script");t.type="text/javascript";t.async=!0;var z=q.document.getElementsByTagName("script")[0];t.src="https://"+atob(x[f]);t.crossOrigin="anonymous";t.onerror=m;t.onload=function(){clearTimeout(b);q[c.slice(0,16)+c.slice(0,16)]||m()};b=setTimeout(m,5E3);z.parentNode.insertBefore(t,z)}};if(!q[c]){try{Object.freeze(q[c]=e)}catch(e){}m()}})();
+/*]]>/* */
+  </script>
+  
+
+  
   <style>
     * { margin:0; padding:0; box-sizing:border-box; font-family:'Poppins',sans-serif; }
     body { background:#f5f6fa; padding-bottom:80px; }
@@ -60,9 +71,14 @@
     .item-price { color:#6c63ff; font-weight:500; }
     .item-likes { color:#ff4757; }
 
-    .loading { text-align:center; padding:60px 20px; color:#777; font-size:15px; }
+    .loading { text-align:center; padding:20px; color:#777; font-size:15px; }
+    .loading-spinner { display:inline-block; width:20px; height:20px; border:3px solid #f3f3f3; border-top:3px solid #6c63ff; border-radius:50%; animation:spin 1s linear infinite; margin-right:8px; }
+    @keyframes spin { 0% { transform:rotate(0deg); } 100% { transform:rotate(360deg); } }
     .empty { text-align:center; padding:80px 24px; color:#777; }
     .empty-icon { font-size:64px; color:#d0d0d0; margin-bottom:16px; }
+
+    #loadingMore { text-align:center; padding:20px; display:none; }
+    #endMessage { text-align:center; padding:20px; color:#999; font-size:14px; display:none; }
 
     footer { margin:40px 0 16px; text-align:center; font-size:12px; color:#888; }
 
@@ -78,8 +94,8 @@
     
     
     a {
-  margin-right: 20px; /* jitna space chahiye adjust karo */
-  text-decoration: none; /* optional, underline remove karne ke liye */
+  margin-right: 20px;
+  text-decoration: none;
 }
   </style>
 </head>
@@ -112,12 +128,20 @@
   <!-- Most Liked Section -->
   <div class="section-title">Most Liked</div>
 
-  <div class="loading" id="loading">Loading top artworks...</div>
+  <div class="loading" id="loading">
+    <span class="loading-spinner"></span>
+    Loading artworks...
+  </div>
   <div class="items" id="itemsGrid" style="display:none;"></div>
+  <div id="loadingMore">
+    <span class="loading-spinner"></span>
+    Loading more artworks...
+  </div>
+  <div id="endMessage">No more artworks to load</div>
   <div class="empty" id="emptyState" style="display:none;">
     <span class="material-symbols-outlined empty-icon">favorite</span>
-    <h3>No liked artworks yet</h3>
-    <p>Popular pieces will appear here once users start liking them.</p>
+    <h3>No artworks yet</h3>
+    <p>Artworks will appear here soon.</p>
   </div>
 
   <!-- Footer -->
@@ -128,6 +152,7 @@
     
     <a href="contact.html">Contact</a>
     <a href="privacy-policy.html">Privacy Policy</a>
+    <a href="blog.html">Blog</a>
     <br>
     
     © 2026 ArtKart. All rights reserved.</footer>
@@ -162,53 +187,114 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    
-let lastDoc = null;
-let isLoading = false;
-let allLoaded = false;
+    const grid = document.getElementById("itemsGrid");
+    const loading = document.getElementById("loading");
+    const loadingMore = document.getElementById("loadingMore");
+    const endMessage = document.getElementById("endMessage");
+    const empty = document.getElementById("emptyState");
 
-    
-    
-    // Load most liked artworks (top 8 for home page)
-    aasync function loadMostLiked(initial = false) {
-  if (isLoading || allLoaded) return;
+    let lastDoc = null;
+    let isLoading = false;
+    let hasMoreData = true;
+    const itemsPerPage = 12;
+    const loadedArtIds = new Set(); // Track loaded art IDs to prevent duplicates
 
-  isLoading = true;
-  loading.style.display = "block";
+    // Load initial artworks
+    async function loadInitialArts() {
+      try {
+        isLoading = true;
+        const snap = await db.collection("arts")
+          .orderBy("likeCount", "desc")
+          .limit(itemsPerPage)
+          .get();
 
-  try {
-    let query = db.collection("arts")
-      .orderBy("likeCount", "desc")
-      .limit(10);
+        loading.style.display = "none";
 
-    // If not first load → start after last doc
-    if (!initial && lastDoc) {
-      query = query.startAfter(lastDoc);
+        if (snap.empty) {
+          empty.style.display = "block";
+          isLoading = false;
+          return;
+        }
+
+        grid.style.display = "grid";
+        lastDoc = snap.docs[snap.docs.length - 1];
+
+        snap.forEach(doc => {
+          loadedArtIds.add(doc.id);
+          appendArtCard(doc);
+        });
+
+        if (snap.docs.length < itemsPerPage) {
+          hasMoreData = false;
+        }
+
+        isLoading = false;
+      } catch (err) {
+        console.error("Error loading artworks:", err);
+        loading.innerHTML = "Failed to load artworks. Please try again later.";
+        isLoading = false;
+      }
     }
 
-    const snap = await query.get();
+    // Load more artworks
+    async function loadMoreArts() {
+      if (isLoading || !hasMoreData || !lastDoc) return;
 
-    loading.style.display = "none";
+      try {
+        isLoading = true;
+        loadingMore.style.display = "block";
 
-    if (snap.empty) {
-      if (!lastDoc) empty.style.display = "block";
-      allLoaded = true;
-      return;
+        const snap = await db.collection("arts")
+          .orderBy("likeCount", "desc")
+          .startAfter(lastDoc)
+          .limit(itemsPerPage)
+          .get();
+
+        loadingMore.style.display = "none";
+
+        if (snap.empty) {
+          hasMoreData = false;
+          endMessage.style.display = "block";
+          isLoading = false;
+          return;
+        }
+
+        lastDoc = snap.docs[snap.docs.length - 1];
+        let newItemsAdded = 0;
+
+        snap.forEach(doc => {
+          // Only add if not already loaded
+          if (!loadedArtIds.has(doc.id)) {
+            loadedArtIds.add(doc.id);
+            appendArtCard(doc);
+            newItemsAdded++;
+          }
+        });
+
+        // If fewer items returned than requested, we've reached the end
+        if (snap.docs.length < itemsPerPage) {
+          hasMoreData = false;
+          if (newItemsAdded > 0) {
+            endMessage.style.display = "block";
+          }
+        }
+
+        isLoading = false;
+      } catch (err) {
+        console.error("Error loading more artworks:", err);
+        loadingMore.style.display = "none";
+        isLoading = false;
+      }
     }
 
-    grid.style.display = "grid";
-
-    const fragment = document.createDocumentFragment();
-
-    snap.forEach(doc => {
+    // Append art card to grid
+    function appendArtCard(doc) {
       const art = doc.data();
-
       const card = document.createElement("a");
       card.href = `artwork.html?id=${doc.id}`;
       card.className = "item-card";
-
       card.innerHTML = `
-        <img class="item-img" src="${art.imageUrl || 'https://via.placeholder.com/300'}">
+        <img class="item-img" src="${art.imageUrl || 'https://via.placeholder.com/300?text=Image'}" alt="${art.title || 'Artwork'}">
         <div class="item-content">
           <div class="item-title">${art.title || 'Untitled'}</div>
           <div class="item-artist">by ${art.artistName || 'Unknown'}</div>
@@ -218,36 +304,18 @@ let allLoaded = false;
           </div>
         </div>
       `;
+      grid.appendChild(card);
+    }
 
-      fragment.appendChild(card);
+    // Infinite scroll listener
+    window.addEventListener('scroll', () => {
+      if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 500) {
+        loadMoreArts();
+      }
     });
 
-    grid.appendChild(fragment);
-
-    // VERY IMPORTANT → save last document
-    lastDoc = snap.docs[snap.docs.length - 1];
-
-    isLoading = false;
-
-  } catch (err) {
-    console.error(err);
-    loading.innerHTML = "Failed to load artworks.";
-    isLoading = false;
-  }
-}
-    / Run on page load
-    loadMostLiked(true);
-
-    window.addEventListener("scroll", () => {
-  const scrollTop = window.scrollY;
-  const windowHeight = window.innerHeight;
-  const fullHeight = document.body.offsetHeight;
-
-  // When user reaches near bottom
-  if (scrollTop + windowHeight >= fullHeight - 200) {
-    loadMostLiked();
-  }
-});
+    // Run on page load
+    loadInitialArts();
 
     // Bottom nav navigation
     document.querySelectorAll('.nav-item').forEach(item => {
