@@ -50,6 +50,49 @@ imageInput.addEventListener("change", (e) => {
 
 imagePreviewWrapper.addEventListener("click", () => imageInput.click());
 
+// ────────────────────────────────────────────────
+// Helper: Get current artist display name from Firestore
+// ────────────────────────────────────────────────
+async function getCurrentArtistName(userId) {
+  try {
+    const userDoc = await db.collection("users").doc(userId).get();
+    if (userDoc.exists) {
+      return userDoc.data().displayName || "Anonymous Artist";
+    }
+    return "Anonymous Artist";
+  } catch (err) {
+    console.warn("Error fetching artist name:", err);
+    return "Anonymous Artist";
+  }
+}
+
+// ────────────────────────────────────────────────
+// Helper: Set up real-time listener for artist name changes
+// ────────────────────────────────────────────────
+function setupArtistNameListener(artId, userId) {
+  try {
+    // Listen for changes to the artist's profile
+    db.collection("users").doc(userId).onSnapshot(
+      (docSnapshot) => {
+        if (docSnapshot.exists) {
+          const newDisplayName = docSnapshot.data().displayName || "Anonymous Artist";
+          
+          // Update the artwork document with the new artist name
+          db.collection("arts").doc(artId).update({
+            artistName: newDisplayName,
+            lastNameSync: firebase.firestore.FieldValue.serverTimestamp()
+          }).catch(err => console.warn("Error syncing artist name:", err));
+        }
+      },
+      (error) => {
+        console.warn("Error listening to artist profile:", error);
+      }
+    );
+  } catch (err) {
+    console.warn("Error setting up artist listener:", err);
+  }
+}
+
 // Form submission with progress bar
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -83,56 +126,65 @@ form.addEventListener("submit", async (e) => {
     const user = auth.currentUser;
     if (!user) throw new Error("You must be signed in to upload.");
 
-// 🔥 STEP 2: Convert image to base64
-const base64Image = await new Promise(resolve => {
-  const reader = new FileReader();
-  reader.onload = () => {
-    resolve(reader.result.split(",")[1]);
-  };
-  reader.readAsDataURL(file);
-});
+    // 🔥 Get current artist display name from Firestore
+    const currentArtistName = await getCurrentArtistName(user.uid);
 
-// 🔥 STEP 3: Create smart text
-const textData =
-  title + " " +
-  category + " " +
-  description + " artwork painting drawing";
+    // 🔥 STEP 2: Convert image to base64
+    const base64Image = await new Promise(resolve => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        resolve(reader.result.split(",")[1]);
+      };
+      reader.readAsDataURL(file);
+    });
 
-// 🔥 STEP 4: Call your Vercel API
-const res = await fetch("https://art-kart-435c1bnvv-nickfury-s-projects.vercel.app/api/embed", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json"
-  },
-  body: JSON.stringify({
-    query: textData,
-    imageBase64: base64Image,
-    mimeType: file.type
-  })
-});
+    // 🔥 STEP 3: Create smart text
+    const textData =
+      title + " " +
+      category + " " +
+      description + " artwork painting drawing";
 
-const data = await res.json();
+    // 🔥 STEP 4: Call your Vercel API
+    const res = await fetch("https://art-kart-435c1bnvv-nickfury-s-projects.vercel.app/api/embed", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        query: textData,
+        imageBase64: base64Image,
+        mimeType: file.type
+      })
+    });
 
-if (!data.embedding) {
-  throw new Error("Embedding failed");
-}
+    const data = await res.json();
 
-const embedding = data.embedding;
+    if (!data.embedding) {
+      throw new Error("Embedding failed");
+    }
 
-// 🔥 STEP 5: Save EVERYTHING
-await db.collection("arts").add({
-  title,
-  description: description || null,
-  price,
-  category: category || null,
-  imageUrl,
-  artistId: user.uid,
-  artistName: user.displayName || "Anonymous Artist",
-  createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-  likeCount: 0,
-  views: 0,
-  embedding // 🔥🔥 THIS IS THE MAIN THING
-});
+    const embedding = data.embedding;
+
+    // 🔥 STEP 5: Save EVERYTHING
+    const artRef = await db.collection("arts").add({
+      title,
+      description: description || null,
+      price,
+      category: category || null,
+      imageUrl,
+      artistId: user.uid,
+      artistName: currentArtistName, // 🔥 Use current Firestore name
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      likeCount: 0,
+      views: 0,
+      embedding, // 🔥🔥 THIS IS THE MAIN THING
+      lastNameSync: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    // 🔥 SETUP REAL-TIME LISTENER
+    // When artist updates their profile name, it automatically updates on this artwork
+    setupArtistNameListener(artRef.id, user.uid);
+
     // Success → show message and redirect to home after short delay
     alert("Artwork uploaded successfully! 🎉\nRedirecting to home...");
 
