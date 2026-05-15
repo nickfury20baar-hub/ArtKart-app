@@ -198,6 +198,29 @@
     let hasMoreData = true;
     const itemsPerPage = 12;
     const loadedArtIds = new Set(); // Track loaded art IDs to prevent duplicates
+    const artistNameCache = {}; // Cache artist names to avoid repeated queries
+
+    // Function to get artist display name from Firestore users collection
+    async function getArtistName(userId) {
+      // Return cached name if available
+      if (artistNameCache[userId]) {
+        return artistNameCache[userId];
+      }
+
+      try {
+        const userDoc = await db.collection("users").doc(userId).get();
+        if (userDoc.exists) {
+          const displayName = userDoc.data().displayName || "Unknown Artist";
+          artistNameCache[userId] = displayName; // Cache the name
+          return displayName;
+        }
+      } catch (err) {
+        console.error("Error fetching artist name:", err);
+      }
+
+      artistNameCache[userId] = "Unknown Artist"; // Cache fallback
+      return "Unknown Artist";
+    }
 
     // Load initial artworks
     async function loadInitialArts() {
@@ -219,10 +242,9 @@
         grid.style.display = "grid";
         lastDoc = snap.docs[snap.docs.length - 1];
 
-        snap.forEach(doc => {
-          loadedArtIds.add(doc.id);
-          appendArtCard(doc);
-        });
+        // Load all art cards in parallel
+        const artPromises = snap.docs.map(doc => appendArtCard(doc));
+        await Promise.all(artPromises);
 
         if (snap.docs.length < itemsPerPage) {
           hasMoreData = false;
@@ -262,14 +284,17 @@
         lastDoc = snap.docs[snap.docs.length - 1];
         let newItemsAdded = 0;
 
-        snap.forEach(doc => {
-          // Only add if not already loaded
+        // Load all new art cards in parallel
+        const artPromises = snap.docs.map(doc => {
           if (!loadedArtIds.has(doc.id)) {
             loadedArtIds.add(doc.id);
-            appendArtCard(doc);
             newItemsAdded++;
+            return appendArtCard(doc);
           }
+          return Promise.resolve();
         });
+
+        await Promise.all(artPromises);
 
         // If fewer items returned than requested, we've reached the end
         if (snap.docs.length < itemsPerPage) {
@@ -287,9 +312,13 @@
       }
     }
 
-    // Append art card to grid
-    function appendArtCard(doc) {
+    // Append art card to grid with real-time artist name
+    async function appendArtCard(doc) {
       const art = doc.data();
+      
+      // Fetch the artist's display name from the users collection
+      const artistDisplayName = await getArtistName(art.userId);
+
       const card = document.createElement("a");
       card.href = `artwork.html?id=${doc.id}`;
       card.className = "item-card";
@@ -297,7 +326,7 @@
         <img class="item-img" src="${art.imageUrl || 'https://via.placeholder.com/300?text=Image'}" alt="${art.title || 'Artwork'}">
         <div class="item-content">
           <div class="item-title">${art.title || 'Untitled'}</div>
-          <div class="item-artist">by ${art.artistName || 'Unknown'}</div>
+          <div class="item-artist">by ${artistDisplayName}</div>
           <div class="item-meta">
             <span class="item-price">₹${(art.price || 0).toLocaleString()}</span>
             <span class="item-likes">❤️ ${art.likeCount || 0}</span>
@@ -305,6 +334,22 @@
         </div>
       `;
       grid.appendChild(card);
+
+      // Set up real-time listener for artist name changes
+      const unsubscribe = db.collection("users").doc(art.userId).onSnapshot(userDoc => {
+        if (userDoc.exists) {
+          const newDisplayName = userDoc.data().displayName || "Unknown Artist";
+          const artistElement = card.querySelector(".item-artist");
+          if (artistElement) {
+            artistElement.textContent = `by ${newDisplayName}`;
+          }
+          // Update cache
+          artistNameCache[art.userId] = newDisplayName;
+        }
+      });
+
+      // Optional: Clean up listener when card is removed (if you implement card removal)
+      // You can store unsubscribe functions if needed for cleanup
     }
 
     // Infinite scroll listener
