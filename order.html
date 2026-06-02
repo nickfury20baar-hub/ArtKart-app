@@ -118,11 +118,13 @@ const db = firebase.firestore();
 
 /* GET URL PARAMS */
 const params = new URLSearchParams(window.location.search);
-const artId = params.get("id");
+const artId = params.get("id") || params.get("artId");
 const buyer = params.get("buyer");
 const city = params.get("city");
+const buyerId = params.get("buyerId");
+const sellerId = params.get("sellerId");
 
-if(!artId || !buyer || !city){
+if(!artId || !buyer || !city || !buyerId || !sellerId){
   alert("Invalid order details");
   throw new Error("Missing parameters");
 }
@@ -167,6 +169,12 @@ loadArtwork();
 /* WHATSAPP ORDER */
 document.getElementById("orderBtn").onclick = () => {
 
+  /* CHECK IF BUYER IS TRYING TO PURCHASE OWN ARTWORK */
+  if(buyerId === sellerId){
+    alert("You cannot purchase your own artwork.");
+    return;
+  }
+
   const orderId = "AK" + Date.now().toString().slice(-6);
 
   const message =
@@ -180,6 +188,10 @@ Artist: ${artworkData.artistName}
 
 Buyer Name: ${buyer}
 City: ${city}
+
+Buyer ID: ${buyerId}
+Seller ID: ${sellerId}
+Art ID: ${artId}
 
 Order ID: ${orderId}
 
