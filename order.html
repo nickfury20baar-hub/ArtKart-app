@@ -167,42 +167,65 @@ async function loadArtwork(){
 loadArtwork();
 
 /* WHATSAPP ORDER */
-document.getElementById("orderBtn").onclick = () => {
+document.getElementById("orderBtn").onclick = async () => {
 
-  /* CHECK IF BUYER IS TRYING TO PURCHASE OWN ARTWORK */
-  if(buyerId === sellerId){
-    alert("You cannot purchase your own artwork.");
-    return;
-  }
+ const orderId = "AK" + Date.now().toString().slice(-6);
 
-  const orderId = "AK" + Date.now().toString().slice(-6);
+ try{
 
-  const message =
+   const user = auth.currentUser;
+
+   if(!user){
+      alert("Please login first");
+      return;
+   }
+
+   // Buyer Document ID / UID
+   const buyerID = user.uid;
+
+   // Art document
+   const artDoc = await db.collection("arts").doc(artId).get();
+
+   const artData = artDoc.data();
+
+   // Seller ID stored inside artwork document
+   const sellerID = artData.sellerId || "Unknown";
+
+   const message =
 `Hello ArtKart,
 
 I would like to purchase this artwork.
 
-Artwork: ${artworkData.title}
-Price: ₹${artworkData.price}
-Artist: ${artworkData.artistName}
+Art ID: ${artId}
+Seller ID: ${sellerID}
+Buyer ID: ${buyerID}
+
+Artwork: ${artData.title}
+Price: ₹${artData.price}
+Artist: ${artData.artistName}
 
 Buyer Name: ${buyer}
 City: ${city}
-
-Buyer ID: ${buyerId}
-Seller ID: ${sellerId}
-Art ID: ${artId}
 
 Order ID: ${orderId}
 
 Please guide me for payment process.`;
 
-  const phone = "919628220891"; // ✅ YOUR WHATSAPP NUMBER (country code included)
+   const phone="919628220891";
 
-  window.open(
-    "https://wa.me/" + phone + "?text=" + encodeURIComponent(message),
-    "_blank"
-  );
+   window.open(
+   "https://wa.me/" +
+   phone +
+   "?text=" +
+   encodeURIComponent(message),
+   "_blank"
+   );
+
+ }catch(err){
+   console.error(err);
+   alert("Order failed");
+ }
+
 };
 </script>
 
