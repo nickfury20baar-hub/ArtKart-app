@@ -95,16 +95,6 @@ if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();  
   
 /* GET URL PARAMS */  
-const params = new URLSearchParams(window.location.search);  
-const artId = params.get("id");  
-const buyer = params.get("buyer");  
-const city = params.get("city");  
-  
-if(!artId || !buyer || !city){  
-  alert("Invalid order details");  
-  throw new Error("Missing parameters");  
-}  
-  
 document.getElementById("buyerName").innerText = buyer;  
 document.getElementById("buyerCity").innerText = city;  
   
