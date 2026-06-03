@@ -135,62 +135,50 @@ loadArtwork();
 /* WHATSAPP ORDER */  
 document.getElementById("orderBtn").onclick = async () => {
 
- const orderId = "AK" + Date.now().toString().slice(-6);
+try{
 
- try{
+ const user = firebase.auth().currentUser;
 
-   const user = auth.currentUser;
+ if(!user){
+   alert("Login required");
+   return;
+ }
 
-   if(!user){
-      alert("Please login first");
-      return;
-   }
+ if(!artworkData){
+   alert("Artwork still loading");
+   return;
+ }
 
-   // Buyer Document ID / UID
-   const buyerID = user.uid;
+ const buyerID = user.uid;
 
-   // Art document
-   const artDoc = await db.collection("arts").doc(artId).get();
+ const sellerID =
+ artworkData.sellerId || "NoSellerID";
 
-   const artData = artDoc.data();
-
-   // Seller ID stored inside artwork document
-   const sellerID = artData.sellerId || "Unknown";
-
-   const message =
+ const message =
 `Hello ArtKart,
-
-I would like to purchase this artwork.
 
 Art ID: ${artId}
 Seller ID: ${sellerID}
 Buyer ID: ${buyerID}
 
-Artwork: ${artData.title}
-Price: ₹${artData.price}
-Artist: ${artData.artistName}
+Artwork: ${artworkData.title}
+Price: ₹${artworkData.price}
 
-Buyer Name: ${buyer}
-City: ${city}
+Order ID: AK${Date.now()}`;
 
-Order ID: ${orderId}
+ window.open(
+ "https://wa.me/919628220891?text="
+ + encodeURIComponent(message),
+ "_blank"
+ );
 
-Please guide me for payment process.`;
+}catch(err){
 
-   const phone="919628220891";
+ console.log(err);
 
-   window.open(
-   "https://wa.me/" +
-   phone +
-   "?text=" +
-   encodeURIComponent(message),
-   "_blank"
-   );
+ alert(err.message);
 
- }catch(err){
-   console.error(err);
-   alert("Order failed");
- }
+}
 
 };
 </script> 
